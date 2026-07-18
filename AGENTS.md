@@ -24,8 +24,13 @@ rationale and domain glossary, and [`RESOURCES.md`](./RESOURCES.md) for the anno
   `course.css` linkage).
 - `MISSION.md`, `RESOURCES.md`, `README.md` — course docs described above.
 
-The learner's actual Rust practice happens in a separate throwaway crate (referred to as
-`rust-practice/`), kept outside this repo. This repo holds the course material, not the solutions.
+- `rust-practice/` — the learner's own practice crate, where every lesson's exercises are worked.
+  The course calls this a throwaway crate and refers to it by that name; here it lives **inside the
+  repo** by choice. Its `target/` is gitignored. This is the one place solution code belongs; the
+  rest of the repo is course material.
+
+Editor: **VS Code** with the `rust-analyzer` extension (the lessons are written for nvim/treesitter,
+but any editor with rust-analyzer works — translate the editor-specific steps accordingly).
 
 ## Teaching method (important context when helping)
 
