@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 11: Traits You Design Yourself</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 11</span>
+    <span>
+      <a href="0010-result-option-and-error-handling.html">← Lesson 10</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0012-jj-squash-and-split.html">Lesson 12 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 11: Traits You Design Yourself</h1>
+  <p class="subtitle">Rust's version of an interface — plus struct-shaped enum variants, a new bit of syntax hiding in plain sight in a backend service's own error type.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Python's duck typing works at runtime: you call <code>.validate()</code> on something and find
+    out at call time whether it has that method. Rust traits check this at compile time — if a
+    type doesn't implement the trait, your code doesn't build, full stop. Traits are how a backend
+    service gets polymorphism without inheritance.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A service like this might define a one-method trait for anything that can check its own
+    readiness, plus an error enum covering what can go wrong:
+  </p>
+  <pre><code>pub trait OperationalCheck {
+    fn validate(&amp;self) -&gt; Result&lt;(), String&gt;;
+}
+
+pub enum ControllerError {
+    NoActiveWindow,
+    SiteUnreachable(String),
+    InvalidSensor { channel: u8, reason: String },
+}</code></pre>
+  <p>Two things to notice:</p>
+  <ul>
+    <li>
+      <code>OperationalCheck</code> — a trait with exactly one method. Anything implementing it
+      gets a uniform way to be validated, regardless of what it actually is.
+    </li>
+    <li>
+      <code>ControllerError</code>'s variants are simple (<code>NoActiveWindow</code>, no data) or
+      tuple-shaped (<code>SiteUnreachable(String)</code>, like Lesson 4's
+      <code>Blocked(String)</code>) — but <code>InvalidSensor { channel, reason }</code> is
+      different: a <strong>struct-shaped variant</strong>, with named fields instead of
+      positional ones. Same enum, three different variant shapes.
+    </li>
+  </ul>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      A trait defines a set of methods a type must implement to "count as" that trait — a
+      contract, not a base class. There's no inheritance hierarchy. But it's not "any type,
+      anywhere, can implement any trait," either: Rust's <strong>orphan rule</strong> (part of
+      what it calls <em>coherence</em>) requires that either the trait or the type you're
+      implementing it for be defined in your own crate. You can implement your own trait for
+      <code>String</code>, or a std trait for your own type, but not <code>Display</code> (std)
+      for <code>Vec&lt;T&gt;</code> (std) — that combination belongs to neither crate you own.
+    </li>
+    <li>
+      Defining your own trait: <code>trait Name { fn method(&amp;self) -&gt; ReturnType; }</code>.
+      Implementing it for a type: <code>impl Name for Type { fn method(&amp;self) -&gt; ReturnType { ... } }</code>.
+    </li>
+    <li>
+      Struct-shaped enum variants (<code>Variant { field: Type, ... }</code>) work exactly like a
+      small anonymous struct attached to that one variant — you pattern-match them with
+      <code>Variant { field, .. }</code> the same way you'd match tuple variants, just by name
+      instead of position.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before designing the <code>Outcome</code> trait below, practice defining and implementing
+        a trait on its own, away from the domain's real <code>OperationalCheck</code> trait. Copy
+        just the first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/15_traits">15_traits</a>
+        set, <code>traits1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green —
+        see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more on how a trait is
+        defined than the theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch10-02-traits.html">"Traits: Defining Shared
+        Behavior"</a> section goes deeper.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>15_traits</code>
+        (<code>traits2.rs</code> onward) is good additional reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>O</code> <span class="gloss">— open a line above the cursor and enter insert mode</span></summary>
+        <div class="details-body">
+        <p>
+          <code>O</code> (mnemonic: <strong>O</strong>pen a line above, capitalized because it's
+          "above" not "below" like lowercase <code>o</code> from Lesson 2) enters insert mode on a
+          fresh line above the cursor. Useful here since there's no scaffold: write the test first
+          (already given below), then use <code>O</code> above it to insert the trait definition
+          and <code>impl</code> block ahead of where they're used.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Design and implement a trait — no scaffold this time</span>
+      <p>
+        This continues the deliberate scaffold fading from Lessons 2 and 7: you have a
+        description and a test only, no trait definition, no <code>impl</code> block. The failing
+        test still exists before you design against it — it's just the whole interface, not one
+        function's parameters/return, that's now yours to design:
+      </p>
+      <blockquote>
+        Define a trait <code>Outcome</code> with one method, <code>passed(&amp;self) -&gt; bool</code>.
+        Implement it for <code>AccessOutcome</code> from Lesson 4.
+      </blockquote>
+      <pre><code>#[test]
+fn outcome_trait_on_access_outcome() {
+    assert!(AccessOutcome::Ready.passed());
+    assert!(!AccessOutcome::EscortRequired.passed());
+    assert!(!AccessOutcome::Blocked("high seas".to_string()).passed());
+}</code></pre>
+      <p>
+        <strong>Write the trait definition and the <code>impl</code> block yourself.</strong>
+        You'll need a <code>match</code> inside <code>passed</code>, the same mechanic from
+        Lesson 4 — just returning a <code>bool</code> instead of a <code>String</code> this time.
+        Get <code>cargo test outcome_trait_on_access_outcome</code> green.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: a struct-shaped variant of your own</span>
+    <p>
+      Add a fourth <code>AccessOutcome</code> variant, <code>Faulted { code: u32, message: String }</code>
+      — struct-shaped, like the <code>InvalidSensor</code> variant on <code>ControllerError</code>
+      from the field study above. Update <code>summarize</code> from Lesson 4 and your new
+      <code>passed</code> impl to handle it (<code>false</code>, obviously). This forces the
+      compiler's exhaustiveness check from Lesson 4 to catch every place you forgot to update — a
+      real preview of what changing a shared type costs in a real backend codebase.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> A trait you designed from a one-sentence description, not copied or scaffolded — the actual interface-design skill, not just filling in a body.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      A one-method trait like <code>OperationalCheck</code> implemented across many different
+      types — sensors, controllers, gangway units — gives a backend service one uniform way to
+      check readiness across all of them, through this one trait. Lesson 14 will show you the
+      exact line that drives this across a whole list at once.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch10-02-traits.html">"Traits: Defining Shared Behavior"</a>
+      section. Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/methods-and-traits.html">"Methods and Traits"</a>
+      chapter is a direct match (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>).
+      You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/15_traits">15_traits</a>
+      exercise as task 1's warm-up above. For extra reps on the <code>From</code>/<code>Into</code>
+      conversions this lesson's title alludes to, Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/23_conversions">23_conversions</a>
+      exercise set covers them on their own (see
+      <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If defining the trait signature felt harder than implementing it, that's normal and worth
+      naming explicitly — designing an interface is a different skill from filling one in, and it's
+      the one this lesson is actually testing.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> a jj lesson — <code>squash</code> and <code>split</code>, reshaping
+    messy history into clean changes.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0010-result-option-and-error-handling.html">← Lesson 10</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0012-jj-squash-and-split.html">Lesson 12 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

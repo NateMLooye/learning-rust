@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 9: Collections &amp; Strings</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 9</span>
+    <span>
+      <a href="0008-jj-navigate-history.html">← Lesson 8</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0010-result-option-and-error-handling.html">Lesson 10 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 9: Collections &amp; Strings</h1>
+  <p class="subtitle"><code>Vec</code>, <code>String</code>/<code>&amp;str</code>, and <code>HashMap</code> — the three data structures you've already been reading past in every field study so far, named properly at last.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Every lesson so far has used a <code>Vec&lt;...&gt;</code> field or a <code>&amp;str</code>
+    return type without stopping to explain it — Lesson 5's <code>AccessRun.outcomes: Vec&lt;AccessOutcome&gt;</code>,
+    Lesson 7's <code>label(&amp;self) -&gt; &amp;str</code>. Python's <code>list</code> and
+    <code>dict</code> have direct Rust equivalents (<code>Vec</code> and <code>HashMap</code>), but
+    Rust's are statically typed and heap-allocated on purpose, and Rust splits "a string" into two
+    genuinely different types where Python has one. This lesson names all three properly, right
+    before Lesson 10 needs you comfortable with a method that returns <code>Option</code>.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A service like this might use two <code>HashMap</code>s in its controller module, playing
+    different roles:
+  </p>
+  <pre><code>// a function parameter
+pub fn evaluate_transfer(
+    &amp;mut self,
+    site: AssetId,
+    request: TransferRequest,
+    overrides: HashMap&lt;String, String&gt;,
+) -&gt; AccessOutcome {
+
+// a struct field
+#[derive(Debug, Default)]
+pub struct ControllerState {
+    pub active_visits: HashMap&lt;AssetId, VesselVisit&gt;,
+    pub parameters: HashMap&lt;String, String&gt;,
+}</code></pre>
+  <p>
+    <code>overrides</code> is a map from <code>String</code> to <code>String</code> — a caller's
+    way of overriding specific operating parameters for one call without touching the global
+    config. <code>ControllerState.active_visits</code> is different: <code>AssetId</code> keys to
+    <code>VesselVisit</code> values, tracking which vessel is currently at which site. Same
+    <code>HashMap&lt;K, V&gt;</code> type, two different key/value shapes.
+  </p>
+  <p>
+    Now a <code>HashMap</code> nested inside another collection — an audit log recording every
+    event for every asset:
+  </p>
+  <pre><code>#[derive(Debug, Clone, Default)]
+pub struct AuditLog {
+    // Maps each asset to every access event recorded for it.
+    events: HashMap&lt;AssetId, Vec&lt;AccessEvent&gt;&gt;,
+}</code></pre>
+  <p>
+    One asset can have <em>several</em> events (arrivals, departures, blocked requests) — so the
+    value isn't a single <code>AccessEvent</code>, it's a <code>Vec</code> of them. This
+    "one key, many values" shape is common enough to recognize on sight:
+    <code>HashMap&lt;K, Vec&lt;V&gt;&gt;</code> reads as "a map where each key can have multiple
+    values," not a mistake or an odd choice.
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong><code>Vec&lt;T&gt;</code></strong> is a growable, heap-allocated list of one type —
+      you've already used it as a struct field (Lesson 5's <code>AccessRun.outcomes</code>) without
+      naming it. <code>vec![a, b, c]</code> builds one directly; <code>Vec::new()</code> starts
+      empty; <code>.push(item)</code> appends.
+    </li>
+    <li>
+      <strong><code>String</code> vs. <code>&amp;str</code>.</strong> <code>String</code> is
+      owned, growable, heap-allocated text — you construct one, you can mutate it
+      (<code>.push_str(...)</code>), and it has exactly one owner (Lesson 6). <code>&amp;str</code>
+      is a <em>borrowed view</em> into string data — either into an existing <code>String</code>,
+      or into text baked directly into the compiled binary (a string literal like
+      <code>"hello"</code> is always <code>&amp;'static str</code>). Lesson 7's
+      <code>label(&amp;self) -&gt; &amp;str</code> returns a borrowed view into
+      <code>self</code>'s own data — no new allocation, no ownership transferred, just a reference
+      with a lifetime tied to <code>self</code>.
+    </li>
+    <li>
+      <strong><code>HashMap&lt;K, V&gt;</code></strong> associates keys with values: <code>.insert(k, v)</code>
+      adds or overwrites an entry, <code>.get(&amp;k)</code> looks one up and returns
+      <code>Option&lt;&amp;V&gt;</code> — <code>Some(&amp;value)</code> if the key exists,
+      <code>None</code> if it doesn't. Lesson 10 covers <code>Option</code> properly; for now, just
+      know that "might not be there" is baked into the return type rather than raising an error or
+      returning a sentinel value the way a Python <code>dict[key]</code> would raise
+      <code>KeyError</code>.
+    </li>
+    <li>
+      <strong>Nested collections compose the same way structs do.</strong>
+      <code>HashMap&lt;String, Vec&lt;T&gt;&gt;</code> is exactly what it looks like: a
+      <code>HashMap</code> whose values happen to be <code>Vec</code>s, same as
+      <code>AuditLog.events</code> above. There's no special syntax for nesting — it's the same
+      generic type parameters you've already seen in Lesson 5's struct fields, just two levels
+      deep.
+    </li>
+    <li>
+      <strong>Two small pieces of syntax for the exercise below.</strong> First,
+      <code>let mut x = ...;</code> — every binding is immutable by default (Rust's answer to "did
+      I mean to change this?"); adding <code>mut</code> is how you opt in to reassigning or
+      mutating it later, e.g. <code>x.insert(...)</code> on a variable you plan to build up.
+      Second, <code>for (k, v) in some_map { ... }</code> — a <code>HashMap</code> is directly
+      iterable as key-value pairs, and this <code>for</code> form destructures each pair into
+      <code>k</code> and <code>v</code> right in the loop header, the same way Python's
+      <code>for k, v in some_dict.items():</code> does.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing <code>merge_operating_parameters</code> below, practice <code>HashMap</code> basics on
+        their own, with no <code>Vec</code>/<code>String</code> interplay mixed in yet. Copy just
+        the first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/11_hashmaps">11_hashmaps</a>
+        set, <code>hashmaps1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green
+        — see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more depth than the
+        theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch08-00-common-collections.html">chapter 8,
+        "Common Collections"</a> covers <code>Vec</code>, <code>String</code>, and
+        <code>HashMap</code> each in full.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>11_hashmaps</code>
+        (<code>hashmaps2.rs</code> onward) is good additional reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>ci(</code> <span class="gloss">— change everything inside the nearest parens</span></summary>
+        <div class="details-body">
+        <p>
+          Same <strong>c</strong>hange + <strong>i</strong>nner pattern from Lesson 1's
+          <code>ci{</code>, different text object: <code>ci(</code> changes everything
+          inside the nearest <code>( )</code> pair. Useful here for rewriting a
+          <code>HashMap::new()</code> call's (empty) argument list, or the inside of an
+          <code>.insert(k, v)</code> call, without retyping the parentheses.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Merge two HashMaps — build and query, no scaffolded body</span>
+      <p>Add this to <code>src/lib.rs</code>:</p>
+      <pre><code>use std::collections::HashMap;
+
+/// Merges `overrides` into `base`, keeping the override's value for any key
+/// present in both — the same "overrides win" rule the field study's
+/// `overrides: HashMap&lt;String, String&gt;` parameter applies.
+fn merge_operating_parameters(
+    base: HashMap&lt;String, String&gt;,
+    overrides: HashMap&lt;String, String&gt;,
+) -&gt; HashMap&lt;String, String&gt; {
+    todo!()
+}
+
+#[test]
+fn merge_operating_parameters_overrides_win() {
+    let mut base = HashMap::new();
+    base.insert("host".to_string(), "prod.example.com".to_string());
+    base.insert("port".to_string(), "443".to_string());
+
+    let mut overrides = HashMap::new();
+    overrides.insert("port".to_string(), "8443".to_string());
+
+    let merged = merge_operating_parameters(base, overrides);
+    assert_eq!(merged.get("host"), Some(&amp;"prod.example.com".to_string()));
+    assert_eq!(merged.get("port"), Some(&amp;"8443".to_string()));
+    assert_eq!(merged.len(), 2);
+}</code></pre>
+      <p>
+        <strong>Write the body yourself.</strong> You need a mutable copy of <code>base</code>,
+        then a way to insert every key-value pair from <code>overrides</code> into it — a
+        <code>for (k, v) in overrides</code> loop plus <code>.insert()</code> is the most direct
+        route (a <code>HashMap</code> is directly iterable as key-value pairs). Get
+        <code>cargo test merge_operating_parameters_overrides_win</code> green.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: collect the keys into a sorted Vec</span>
+    <p>
+      Add a second assertion: collect <code>merged</code>'s keys into a
+      <code>Vec&lt;String&gt;</code>, sort it, and assert it equals
+      <code>vec!["host".to_string(), "port".to_string()]</code>. You'll want
+      <code>.keys()</code>, <code>.cloned()</code>, and <code>.collect()</code> chained together,
+      then <code>.sort()</code> on the resulting <code>Vec</code> (<code>HashMap</code> iteration
+      order isn't guaranteed, so sorting before asserting is the correct habit, not a
+      formality). This is a small preview of Lesson 14's iterator chains.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> A working key-value merge with the exact "override wins" semantics the field study's <code>overrides</code> parameter implements, using nothing but standard-library collections.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      <code>Vec</code>, <code>String</code>/<code>&amp;str</code>, and <code>HashMap</code> are
+      the actual data structures nearly every backend-service field is built from — not exotic
+      containers, the same three you've now used directly. Once these three are unremarkable,
+      almost every struct field type in a real codebase reads as "a combination of things I
+      already know," not something new to look up.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch08-00-common-collections.html">chapter 8, "Common Collections"</a>
+      — sections 8.1 (<code>Vec</code>), 8.2 (<code>String</code>), and 8.3 (<code>HashMap</code>)
+      cover exactly this lesson's three data structures, each in more depth than one lesson can
+      carry. Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/std-types.html">"Standard Library Types"</a>
+      segment covers the same three plus <code>Option</code>/<code>Result</code> in one sitting
+      (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You already did
+      Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/11_hashmaps">11_hashmaps</a>
+      exercise as task 1's warm-up above. For extra reps on the other two, Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/05_vecs">05_vecs</a> and
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/09_strings">09_strings</a>
+      exercise sets isolate <code>Vec</code> and <code>String</code> respectively, and
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/04_primitive_types">04_primitive_types</a>
+      covers the numeric/scalar basics underneath both (see
+      <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If <code>String</code> vs. <code>&amp;str</code> still feels like "two names for the same
+      thing," ask now — it's a real, load-bearing distinction (owned vs. borrowed, same as Lesson
+      6), and Lesson 10's <code>?</code>-heavy field study assumes you can tell at a glance which
+      one a function is working with.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> <code>Result</code>, <code>Option</code>, and the <code>?</code>
+    operator — including the exact <code>HashMap::get</code>-returns-<code>Option</code> pattern
+    from this lesson's theory section, handled properly for the first time.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0008-jj-navigate-history.html">← Lesson 8</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0010-result-option-and-error-handling.html">Lesson 10 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

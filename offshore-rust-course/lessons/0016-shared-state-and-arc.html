@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 16: Shared State &amp; Arc</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 16</span>
+    <span>
+      <a href="0015-jj-conflicts-and-undo.html">← Lesson 15</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0017-modules-and-visibility.html">Lesson 17 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 16: Shared State &amp; <code>Arc</code></h1>
+  <p class="subtitle">Lesson 6 taught single ownership. This is what Rust does when a value genuinely needs more than one owner at once.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Lesson 6 established: one owner per value. But a real backend's shared controller state needs
+    to be accessible from many handlers at once while the service runs — that's not a bug in the
+    ownership model, it's a real requirement <code>Arc</code> exists to satisfy.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A service like this might wrap Lesson 9's <code>ControllerState</code> in exactly this shape:
+  </p>
+  <pre><code>pub type Ctx = Arc&lt;ControllerState&gt;;
+
+pub struct ControllerState {
+    pub active_visits: HashMap&lt;AssetId, VesselVisit&gt;,
+    pub parameters: HashMap&lt;String, String&gt;,
+    pub emergency_stop: AtomicBool,
+    log: Mutex&lt;Vec&lt;AccessEvent&gt;&gt;,
+}</code></pre>
+  <p>
+    <code>Ctx</code> — the type a handler would take to reach the running service's shared
+    state — is <em>literally</em> <code>Arc&lt;ControllerState&gt;</code>. Every part of a running
+    service holds one of these, and they all point at the same underlying
+    <code>ControllerState</code>: the same <code>active_visits</code> and <code>parameters</code>
+    fields from Lesson 9, plus an <code>emergency_stop</code> flag and an event <code>log</code>
+    that specifically need to be mutated safely from more than one place at once.
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong><code>Arc&lt;T&gt;</code></strong> ("Atomically Reference Counted") gives you shared
+      ownership: cloning an <code>Arc</code> doesn't copy the inner data, it just increments a
+      counter and hands back a pointer to the same value. When the last <code>Arc</code> pointing
+      at it is dropped, the value is freed. This is how multiple owners coexist without violating
+      Lesson 6's single-owner rule for the underlying data — the <code>Arc</code> wrapper is what's
+      actually cloned, not the thing inside.
+    </li>
+    <li>
+      <strong><code>Arc</code> alone only gives you shared read access.</strong> To mutate shared
+      data safely across threads, you need something inside the <code>Arc</code> that manages
+      concurrent access itself — the standard-library answer is <code>Mutex&lt;T&gt;</code>
+      (lock, mutate, unlock), which is exactly what guards <code>ControllerState.log</code> above.
+    </li>
+    <li>
+      <strong><code>AtomicBool</code></strong> is a lighter-weight tool for a single boolean —
+      safe concurrent read/write with no lock at all, using CPU-level atomic instructions. An
+      emergency-stop flag is a natural fit: many places need to check or set one bit of state,
+      cheaply, without contending over a full lock.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        This lesson's theory section above is self-contained for <code>Arc</code>+<code>Mutex</code>
+        specifically — unlike every other lesson, there's no required Rustlings warm-up here.
+        The obvious-looking candidate, Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/19_smart_pointers">19_smart_pointers</a>,
+        builds up to <code>Arc</code> <em>through</em> <code>Box</code> and <code>Rc</code> first —
+        both genuinely useful, neither one taught anywhere in this course. Doing that set as a
+        prerequisite would mean learning two new, untaught concepts (heap-allocating a single
+        value, single-threaded reference counting) just to warm up for a third. For more depth
+        than the theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch16-03-shared-state.html">"Shared-State
+        Concurrency"</a> section covers <code>Arc</code>+<code>Mutex</code> directly.
+      </p>
+      <p>
+        <strong>Optional, with an honest warning:</strong> if you want the <code>19_smart_pointers</code>
+        set anyway, it's good material — just budget time to actually learn <code>Box</code> and
+        <code>Rc</code> along the way (the Rust Book's own
+        <a href="https://doc.rust-lang.org/book/ch15-00-smart-pointers.html">chapter 15, "Smart
+        Pointers"</a> covers both), rather than skimming past them to get to the <code>Arc</code>
+        material. Not required to move on to the exercise below either way.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>Ctrl-v</code> <span class="gloss">— visual block: align or prefix a column of lines</span></summary>
+        <div class="details-body">
+        <p>
+          <code>Ctrl-v</code> starts visual block mode — not a change/delete/yank operator, but a
+          selection mode that picks a rectangular column instead of whole lines. Useful if you
+          sketch a second field next to <code>ControllerState</code>'s existing ones in the field
+          study above and want to align them, or add the same prefix to a column of lines at once,
+          without editing each line separately.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Shared mutable state, the std-library way</span>
+      <p>Add this scaffold (no new dependency needed — <code>Arc</code> and <code>Mutex</code> are both in <code>std</code>):</p>
+      <pre><code>use std::sync::{Arc, Mutex};
+
+/// A single audit-log entry.
+#[derive(Debug, Clone, PartialEq)]
+struct AccessEvent {
+    asset: String,
+    outcome: String,
+}
+
+/// Appends `event` to the shared log and returns its new length. Takes
+/// ownership of an `Arc` handle rather than borrowing one, the same way a
+/// real handler takes ownership of its own `Ctx` clone.
+fn record_access_event(log: Arc&lt;Mutex&lt;Vec&lt;AccessEvent&gt;&gt;&gt;, event: AccessEvent) -&gt; usize {
+    todo!()
+}
+
+#[test]
+fn record_access_event_appends_and_returns_length() {
+    let log = Arc::new(Mutex::new(Vec::new()));
+    let arrival = AccessEvent { asset: "gangway-04".to_string(), outcome: "ready".to_string() };
+    let blocked = AccessEvent { asset: "gangway-04".to_string(), outcome: "blocked".to_string() };
+    let departure = AccessEvent { asset: "gangway-04".to_string(), outcome: "ready".to_string() };
+
+    assert_eq!(record_access_event(Arc::clone(&amp;log), arrival), 1);
+    assert_eq!(record_access_event(Arc::clone(&amp;log), blocked), 2);
+    assert_eq!(record_access_event(Arc::clone(&amp;log), departure), 3);
+
+    // Read through the original `log` handle — a fourth owner of the same
+    // underlying Vec, never passed into `record_access_event` at all.
+    assert_eq!(log.lock().unwrap().len(), 3);
+}</code></pre>
+      <p>
+        <strong>Write the body yourself.</strong> You'll need <code>.lock()</code> (which returns a
+        <code>Result</code> — <code>.unwrap()</code> is fine here) to get access to the
+        <code>Vec</code> inside, then push and read its length. Notice the test can't compile with
+        <code>log</code> passed directly (moved) into <code>record_access_event</code> more than
+        once — <code>record_access_event</code> takes ownership of its <code>Arc</code> parameter,
+        so calling it three times with the same underlying log <em>requires</em>
+        <code>Arc::clone(&amp;log)</code> at each of those three call sites; that's the
+        multiple-ownership idea from the theory section, forced by the compiler rather than just
+        asserted. Get <code>cargo test record_access_event_appends_and_returns_length</code>
+        green.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: count the handles</span>
+    <p>
+      Add <code>assert_eq!(Arc::strong_count(&amp;log), 1);</code> right before the three
+      <code>record_access_event</code> calls in the test above. Because each
+      <code>Arc::clone(&amp;log)</code> handle you pass into <code>record_access_event</code> is
+      dropped as soon as that call returns, the strong count only ever reflects handles alive
+      <em>right now</em> — a concrete look at what "reference counted" actually counts, moment to
+      moment, rather than a running total.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> Shared, safely-mutated state across four distinct <code>Arc</code> handles pointing at the same underlying data — the std-library equivalent of exactly what <code>Ctx = Arc&lt;ControllerState&gt;</code> does for real, at scale, in a production backend.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Every handler receiving a <code>Ctx</code> is receiving a clone of the same
+      <code>Arc&lt;ControllerState&gt;</code> — cheap to pass around, all pointing at the one real
+      shared state for that running service. You now know exactly what that type alias is doing
+      and why it's not just "a smart pointer for no reason."
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch16-03-shared-state.html">"Shared-State Concurrency"</a>
+      section covers <code>Arc</code>+<code>Mutex</code> directly. Comprehensive Rust builds up to
+      the same place via
+      <a href="https://google.github.io/comprehensive-rust/smart-pointers.html">"Smart Pointers"</a>
+      (<code>Box</code>, <code>Rc</code>, then <code>Arc</code>) and pairs it with real OS
+      threads in <a href="https://google.github.io/comprehensive-rust/concurrency/welcome.html">"Concurrency: Shared State"</a>
+      (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/19_smart_pointers">19_smart_pointers</a>
+      is the optional Box/Rc/Arc set mentioned in task 1's warm-up note above — not something
+      you already did, since this lesson doesn't require it. Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/20_threads">20_threads</a>
+      set covers real OS threads, which this lesson doesn't — a real backend service's own
+      concurrency is more likely async/Tokio than OS threads — but it's there if you want the
+      extra rep (see
+      <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--checkpoint">
+    <span class="callout-label">Retrieval checkpoint — Lessons 13-15, closed-book, ~2 min</span>
+    <p>
+      Answer from memory before opening the reveal:
+    </p>
+    <ol>
+      <li>What does a trait bound like <code>T: ToString</code> actually unlock inside a generic function that plain <code>T</code> doesn't?</li>
+      <li>How does jj treat a conflict differently from how git treats one?</li>
+    </ol>
+    <details>
+      <summary>Reveal the answers</summary>
+      <div class="details-body">
+        <p>
+          <strong>1.</strong> Without a bound, the compiler only allows operations every possible
+          type supports — almost nothing. <code>T: ToString</code> unlocks <code>.to_string()</code>
+          and anything else the bound's trait provides (Lesson 13).
+        </p>
+        <p>
+          <strong>2.</strong> jj treats a conflict as ordinary, first-class state — you can keep
+          working, switch changes, even build on top of a conflicted change, and resolve it
+          whenever you're ready. git stops you mid-operation and demands resolution first
+          (Lesson 15).
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If "why not just use a global variable" comes to mind, ask — the answer connects directly
+      back to Lesson 6's ownership rules and is worth hearing explicitly rather than assumed.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> modules — splitting your now-substantial <code>lib.rs</code> into
+    real files, the first step toward the same idea a real access-backend workspace takes across
+    several crates (that part gets its own lesson right after this one).
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0015-jj-conflicts-and-undo.html">← Lesson 15</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0017-modules-and-visibility.html">Lesson 17 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

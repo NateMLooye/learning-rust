@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference: Rust ↔ Backend Concept Map</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends</span>
+    <span>
+      <a href="../MISSION.md">Mission</a>
+      <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map</a>
+      <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet</a>
+      <a href="0005-rustlings-map.html">Rustlings map</a>
+      <a href="../lessons/0001-open-rust-with-feedback.html">Lesson 1</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Reference: Rust ↔ Backend Concept Map</h1>
+  <p class="subtitle">Every Rust concept in this course, paired with where the equivalent shape shows up in a backend service.</p>
+
+  <p>
+    This is the compressed version of the field study: for each Rust concept you'll practice,
+    here is exactly where it shows up in the course's synthetic access-backend domain. Read the
+    referenced file <em>before</em> the concept feels solid, to see it used for real, and come
+    back to this table any time you need to re-locate an example.
+  </p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">The synthetic domain</span>
+    <p>
+      This course's examples come from a small, made-up Cargo workspace of three crates:
+      <code>access-service</code> (evaluating and recording transfer requests),
+      <code>telemetry-core</code> (aggregating reported status), and <code>test-support</code>
+      (shared test fixtures). Every type named below — <code>AccessOutcome</code>,
+      <code>AccessRun</code>, <code>ControllerState</code>, and so on — is a synthetic teaching
+      construct defined in <code>MISSION.md</code>'s domain glossary, not real safety or
+      motion-control code. It's a coherent, deliberately simple corpus: enums, traits, generics,
+      <code>Result</code>/<code>anyhow</code>, and shared state, without the scarier corners of
+      the language getting in the way.
+    </p>
+  </div>
+
+  <h2>Concept map</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Rust concept</th>
+        <th>Where it shows up (backend)</th>
+        <th>What to notice</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Enums + pattern matching</td>
+        <td><code>access-service/src/outcome.rs</code> (<code>AccessOutcome</code>: <code>Ready</code>, <code>Blocked(reason)</code>, <code>EscortRequired</code>)</td>
+        <td>Enums are the central modeling tool here, closer to a Rust superpower than a curiosity. Note <code>#[non_exhaustive]</code>-style thinking and how a data-carrying variant like <code>Blocked(String)</code> keeps the reason attached to the outcome.</td>
+      </tr>
+      <tr>
+        <td>Structs, <code>impl</code>, <code>Display</code>/<code>Debug</code></td>
+        <td><code>access-service/src/run.rs</code> (<code>AccessRun</code>)<br><code>telemetry-core/src/status.rs</code> (telemetry structs)</td>
+        <td>Small, self-contained files. A struct, its <code>impl</code> block, and a couple of standard trait implementations — the shape you'll write a hundred times.</td>
+      </tr>
+      <tr>
+        <td>Ownership &amp; borrowing</td>
+        <td><code>access-service/src/run.rs</code> (the <code>evaluate</code>/<code>audit</code> method on <code>AccessRun</code>)</td>
+        <td>Watch where a reference is borrowed vs. where <code>.clone()</code> is reached for. This is where "who owns this?" stops being abstract.</td>
+      </tr>
+      <tr>
+        <td>Lifetimes (elided &amp; explicit)</td>
+        <td><code>access-service/src/labels.rs</code> (<code>resolve_access_label&lt;'a&gt;</code>, a borrowed-label resolver)</td>
+        <td>Most references need no annotation at all — elision handles the common case. A function that borrows from two different inputs and returns one of them is the case elision can't handle: the compiler needs the lifetime spelled out.</td>
+      </tr>
+      <tr>
+        <td><code>Result</code>, <code>?</code>, <code>anyhow</code> vs. <code>thiserror</code></td>
+        <td><code>access-service/src/outcome.rs</code> (thiserror)<br><code>access-service/src/config.rs</code> (<code>parse_heave_limit</code>, anyhow, <code>?</code>, <code>.context()</code>)</td>
+        <td>Two error idioms coexist on purpose: <code>thiserror</code> typed enums for library code, <code>anyhow</code> + <code>bail!</code>/<code>.context()</code> for application code such as parsing an operating parameter. Notice which file uses which and why.</td>
+      </tr>
+      <tr>
+        <td>Traits (incl. <code>From</code>/<code>TryFrom</code>)</td>
+        <td><code>access-service/src/outcome.rs</code> (the <code>Outcome</code> trait)<br><code>access-service/src/checks.rs</code> (the <code>OperationalCheck</code> trait)</td>
+        <td>A one-method trait implemented across a set of checks via <code>try_for_each(OperationalCheck::validate)</code> — a clean, minimal example of Rust's interface mechanism.</td>
+      </tr>
+      <tr>
+        <td>Generics &amp; trait bounds</td>
+        <td><code>access-service/src/config.rs</code> (<code>describe_parameter&lt;T: ParameterName&gt;</code>)</td>
+        <td>Generic functions with a trait bound in the signature — the Rust equivalent of Python's duck typing, but checked at compile time.</td>
+      </tr>
+      <tr>
+        <td>Iterators &amp; closures</td>
+        <td><code>access-service/src/checks.rs</code> (<code>try_for_each(OperationalCheck::validate)</code>)</td>
+        <td>Iterator combinators over a list of checks, passing a trait method as a closure-like argument.</td>
+      </tr>
+      <tr>
+        <td><code>Arc</code>, <code>Mutex</code>, shared state</td>
+        <td><code>telemetry-core/src/state.rs</code> (<code>type Ctx = Arc&lt;ControllerState&gt;</code>, <code>Mutex</code>, <code>AtomicBool</code>)</td>
+        <td>Concurrent shared state across handlers — a good bridge from "ownership is single-threaded" to "here's how Rust shares safely across threads."</td>
+      </tr>
+      <tr>
+        <td>Modules &amp; Cargo workspace</td>
+        <td>root <code>Cargo.toml</code> (<code>members = ["access-service", "telemetry-core", "test-support"]</code>)</td>
+        <td>A small workspace of three crates. This is the Rust equivalent of a Python monorepo with per-package <code>pyproject.toml</code> files.</td>
+      </tr>
+      <tr>
+        <td>Testing idioms</td>
+        <td>inline <code>#[cfg(test)] mod tests</code> throughout, e.g. <code>access-service/src/outcome.rs</code></td>
+        <td>Tests live inline in the file they test. No separate test framework to learn — <code>cargo test</code> is the whole story.</td>
+      </tr>
+      <tr>
+        <td><em>Advanced:</em> async trait objects, a parser</td>
+        <td><em>read and admire, not build-your-own</em></td>
+        <td>Real backend services often have at least one file storing async closures as trait objects, or a hand-written parser for some config grammar. Worth reading once you find one, but not a "build one yourself" target in this course.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Suggested reading order</h2>
+  <p>Roughly easy → hard, if you want to browse ahead of the lessons:</p>
+  <ol>
+    <li><code>test-support/src/lib.rs</code> — small, the shared fixtures crate.</li>
+    <li><code>access-service/src/outcome.rs</code> — a clean, self-contained <code>thiserror</code> enum plus the <code>Outcome</code> trait.</li>
+    <li><code>access-service/src/checks.rs</code> — one small trait (<code>OperationalCheck</code>), end to end.</li>
+    <li><code>access-service/src/config.rs</code> — <code>parse_heave_limit</code> with <code>let-else</code>, <code>?</code>, <code>.context()</code>.</li>
+    <li><code>access-service/src/run.rs</code> — <code>AccessRun</code>, the evaluate/audit method.</li>
+    <li><code>access-service/src/labels.rs</code> — <code>resolve_access_label</code>, explicit lifetimes.</li>
+    <li><code>telemetry-core/src/state.rs</code> — <code>Arc</code> + <code>Mutex</code> + <code>AtomicBool</code> shared-state <code>ControllerState</code>.</li>
+  </ol>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      For the language-level concepts (not this course's specific usage), start with
+      <a href="https://doc.rust-lang.org/book/">The Rust Programming Language</a> — see
+      <code>RESOURCES.md</code> for the full annotated list.
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If a row in this table doesn't make sense yet, or you want to see a concept worked through
+      a <em>different</em> way than the one listed, just ask — this table isn't exhaustive, it's
+      a starting point.
+    </p>
+  </div>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet →</a> ·
+    <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map →</a> ·
+    <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet →</a> ·
+    <a href="0005-rustlings-map.html">Rustlings map →</a>
+  </div>
+</footer>
+
+</body>
+</html>

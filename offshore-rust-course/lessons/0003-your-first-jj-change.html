@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3: Your First jj Change</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 3</span>
+    <span>
+      <a href="0002-live-diagnostics-and-your-signature.html">← Lesson 2</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0004-enums-that-carry-data.html">Lesson 4 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 3: Your First jj Change</h1>
+  <p class="subtitle">jj (Jujutsu) is a good general-practice VCS workflow for managing a sequence of edits. Practice the mechanics now, on real work you've already done.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    <code>rust-practice</code> has been sitting there since Lesson 1 as a plain git
+    repo with <strong>zero commits</strong> — everything you've written is still just untracked
+    files. That's fine for a practice crate, but it means two lessons' worth of real work has never
+    been described anywhere. Many real backend repos run jj colocated with git, so this is a
+    workflow worth having under your fingers early — better to hit the concepts here first, on
+    low-stakes code.
+  </p>
+
+  <h2>The one idea that's different from git</h2>
+  <p>
+    In git: working directory, staging area (the index), and commits are three separate layers.
+    You <code>git add</code> to stage, then <code>git commit</code> to snapshot.
+  </p>
+  <p>
+    In jj: <strong>there is no staging area, and your working copy is itself a commit</strong> —
+    called the working-copy commit. Every file edit you make is automatically part of the current
+    change, live, with no <code>add</code> step. <code>jj describe</code> sets that commit's
+    message. <code>jj new</code> snapshots the current change and starts a fresh, empty one on top
+    when you're ready to move on. There's no separate "finalize this commit" step — describing and
+    moving to a new change are the two actions that do that job.
+  </p>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Colocate the repo</span>
+      <p>From inside <code>rust-practice</code>:</p>
+      <pre><code>jj git init --colocate</code></pre>
+      <p>
+        This layers jj onto the existing git repo non-destructively — both <code>git</code> and
+        <code>jj</code> commands keep working afterward. This is a common, low-risk way to adopt
+        jj on top of an existing git repo; you're not doing anything practice-crate-specific here.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Look at what jj sees</span>
+      <pre><code>jj st
+jj log</code></pre>
+      <p>
+        Since the underlying git repo had zero commits, every file you've written — <code>Cargo.toml</code>,
+        <code>Cargo.lock</code>, <code>src/lib.rs</code>, <code>.gitignore</code> — is already part
+        of one working-copy commit. <code>jj log</code> should show that commit marked
+        <code>(no description set)</code>. That undescribed commit is Lesson 1's <code>add</code>
+        function and Lesson 2's <code>max</code> function, both still nameless.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — optional, try it once</span> <code>i</code> / <code>A</code> <span class="gloss">— enter insert mode in $EDITOR for a jj describe message</span></summary>
+        <div class="details-body">
+        <p>
+          <code>jj describe</code> with no <code>-m</code> opens <code>$EDITOR</code> for the
+          message instead — genuinely nicer once a description needs more than one line. It drops
+          you into an editor buffer starting in normal mode, so you need one of vim's insert-mode
+          entry commands: <code>i</code> (<strong>i</strong>nsert before the cursor) or
+          <code>A</code> (<strong>A</strong>ppend at the end of the line). When you're done,
+          <code>&lt;Esc&gt;</code> back to normal mode, then <code>:wq</code>
+          (<strong>w</strong>rite the file, then <strong>q</strong>uit) to save and exit. Same jj
+          outcome as <code>-m "..."</code>, different input path.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Describe it — in your own words, not a template</span>
+      <p>
+        Before running the command: without looking back at Lessons 1 or 2, write one sentence for
+        yourself describing what this change actually contains. Not "lesson 1 and 2 work" — what
+        did you actually build? Then turn that sentence into the description:
+      </p>
+      <pre><code>jj describe -m "&lt;your own message here&gt;"</code></pre>
+      <p>
+        There's no scaffold to fill in for this one — the content has to come from your own summary
+        of your own work, or it doesn't teach you anything about writing a good change description.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Start a fresh change</span>
+      <pre><code>jj new</code></pre>
+      <p>
+        This snapshots the change you just described and gives you a new, empty working-copy commit
+        to work in. Run <code>jj log</code> again — you should now see two commits: your described
+        one, and a new empty <code>(no description set)</code> one on top, ready for Lesson 4.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">Recovery, always</span>
+    <p>
+      If any of this goes sideways — wrong description, <code>jj new</code> when you meant
+      something else — reach for <code>jj undo</code> first. It undoes the last jj operation and is
+      always safe. <code>jj op log</code> shows the full operation history if you need to go back
+      further. Never <code>rm -rf .jj</code>.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> <code>jj log</code> shows a real, described change instead of "(no description set)" — and the repo now works with both <code>git</code> and <code>jj</code> commands.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      A colocated jj+git setup is a common, low-risk way real backend repos adopt jj — this isn't
+      a practice-crate-only detour. The commands you just ran (<code>jj st</code>, <code>jj log</code>,
+      <code>jj describe</code>, <code>jj new</code>) are exactly what you'll use once you're ready
+      to move from <code>rust-practice</code> to real production changes.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      <a href="https://jj-vcs.github.io/jj/latest/">The Jujutsu (jj) tutorial and CLI reference</a>
+      — the canonical source, and short enough to read in full. See
+      <a href="../reference/0002-rust-tooling-cheatsheet.html"><code>../reference/0002-rust-tooling-cheatsheet.html</code></a> for the quick command table.
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If <code>jj git init --colocate</code> errors, or <code>jj log</code> doesn't show what this
+      lesson says it should, stop and ask. jj's error messages are usually good, but "usually good"
+      isn't the same as "obvious on your first day with the tool."
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> Lesson 4 is the first real language-concept lesson since Lesson 2's
+    <code>if</code>/<code>else</code> — Rust enums that carry data, and <code>match</code>, read
+    straight out of a synthetic domain error type before you write your own.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0002-live-diagnostics-and-your-signature.html">← Lesson 2</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0004-enums-that-carry-data.html">Lesson 4 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

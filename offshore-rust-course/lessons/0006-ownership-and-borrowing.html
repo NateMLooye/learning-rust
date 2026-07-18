@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 6: Ownership &amp; Borrowing</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 6</span>
+    <span>
+      <a href="0005-structs-that-group-data.html">← Lesson 5</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0007-lifetimes-and-borrowed-data.html">Lesson 7 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 6: Ownership &amp; Borrowing</h1>
+  <p class="subtitle">The concept most Python developers find genuinely new about Rust — and the reason that unexplained <code>&amp;</code> from Lesson 4 existed.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Python never makes you think about who owns a value — the garbage collector cleans up whenever
+    nothing references it anymore. Rust has no garbage collector. Instead, every value has exactly
+    one owner, and the compiler tracks this at compile time. This is what the borrow checker is
+    actually checking. Once this clicks, most "why won't this compile" moments in a real backend
+    stop being mysterious.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A service like this might evaluate a transfer request and log an audit entry from it. Open
+    your editor and read this method:
+  </p>
+  <pre><code>pub fn evaluate(&amp;self, request: TransferRequest) -&gt; AccessOutcome {
+    self.record_audit_entry(request.clone());
+    if !self.window_is_open() {
+        return AccessOutcome::Blocked("outside access window".to_string());
+    }
+    self.decide(request)
+}</code></pre>
+  <p>
+    <code>record_audit_entry</code> and <code>decide</code> both take <code>request: TransferRequest</code> —
+    by value, not by reference. Ask yourself: why does the first call need
+    <code>request.clone()</code> but the second call (the last line) just uses <code>request</code> plain?
+  </p>
+
+  <details class="callout callout--vim">
+    <summary><span class="callout-label">Vim reminder — useful for this exact question</span> <code>*</code> <span class="gloss">— jump to the next use of the word under the cursor</span></summary>
+    <div class="details-body">
+    <p>
+      <code>*</code> searches forward for the word under the cursor, whole-word — not a mnemonic
+      letter, just a motion worth knowing. Put the cursor on <code>request</code> anywhere in this
+      function and hit <code>*</code> to jump straight to its next use, tracing exactly where a
+      value gets consumed versus where it's still needed. Faster than scanning by eye for a short
+      function like this one, and essential once field studies get longer.
+    </p>
+    </div>
+  </details>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong>Every value has exactly one owner.</strong> When you pass a value to a function
+      <em>by value</em> (no <code>&amp;</code>), ownership <strong>moves</strong> into that
+      function. The original variable can no longer be used — not "might be stale," genuinely
+      <strong>will not compile</strong> if you try.
+    </li>
+    <li>
+      <strong>Borrowing (<code>&amp;</code>) lets you use a value without taking ownership.</strong>
+      A function taking <code>&amp;TransferRequest</code> instead of <code>TransferRequest</code>
+      only looks at the value; the caller keeps ownership and can use it again afterward.
+    </li>
+    <li>
+      <strong>.clone() makes a second, independent owned copy</strong> when you
+      genuinely need to use a value more than once in a context that takes ownership each time.
+      It's not free (it copies data), but it's simple, explicit, and often the right call —
+      exactly what <code>evaluate</code> does above, because it needs <code>request</code> twice
+      and <code>record_audit_entry</code>/<code>decide</code> both take ownership.
+    </li>
+    <li>
+      <strong>One small piece of syntax for the exercise below:</strong> <code>(value1, value2)</code>
+      is a <strong>tuple literal</strong> — a fixed-size, ordered grouping of values, possibly of
+      different types, with no field names. <code>(String, String)</code> as a return type means
+      "returns exactly two <code>String</code>s, in this order"; the caller reads them back out
+      positionally, e.g. <code>result.0</code>/<code>result.1</code>, or destructures them with
+      <code>let (a, b) = ...</code>.
+    </li>
+  </ul>
+  <p>
+    Answer to the field-study question: the first call needs <code>.clone()</code> because after
+    it, the original <code>request</code> is still needed for the possible second call on the last
+    line — without cloning, the first call would have moved <code>request</code> away, and that
+    last line wouldn't compile.
+  </p>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing <code>both_versions</code> below, trigger and fix the move-vs-borrow-vs-clone
+        decision in isolation, away from <code>evaluate</code>'s real complexity. Copy just the first
+        file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/06_move_semantics">06_move_semantics</a>
+        set, <code>move_semantics1.rs</code>, into <code>rust-practice/src/bin/</code> and get it
+        green — see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more depth than the
+        theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">chapter 4,
+        "Understanding Ownership"</a> is the single most important chapter for this lesson.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>06_move_semantics</code>
+        (<code>move_semantics2.rs</code> onward) walks through several more move-vs-borrow
+        scenarios — good reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Hit the move error, then fix it — same shape as <code>evaluate</code></span>
+      <p>Add this to <code>src/lib.rs</code> exactly as shown:</p>
+      <pre><code>fn announce(label: String) -&gt; String {
+    label.to_uppercase()
+}
+
+fn log_entry(label: String) -&gt; String {
+    label.to_lowercase()
+}
+
+/// Returns both an announced (uppercase) and a logged (lowercase) form of `label`.
+fn both_versions(label: String) -&gt; (String, String) {
+    todo!()
+}
+
+#[test]
+fn both_versions_works() {
+    let result = both_versions("Site Charlie".to_string());
+    assert_eq!(result, ("SITE CHARLIE".to_string(), "site charlie".to_string()));
+}</code></pre>
+      <p>
+        <strong>        Write the body of <code>both_versions</code> yourself.</strong> Both
+        <code>announce</code> and <code>log_entry</code> take ownership of a <code>String</code> —
+        the same situation as <code>record_audit_entry</code>/<code>decide</code> in the field
+        study. Get <code>cargo test both_versions_works</code> green.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: read the real error rust-analyzer will show you</span>
+    <p>
+      Before fixing it, try writing <code>(announce(label), log_entry(label))</code> with no
+      clone at all. Read the "use of moved value" diagnostic rust-analyzer underlines. This is the
+      single most common first-week Rust error — better to trigger it on purpose than be
+      blindsided by it later.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> You resolved a real ownership conflict using the exact pattern the <code>evaluate()</code> field study uses — not a toy simplification, the actual technique.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Once you can spot "this takes ownership, this borrows, that's why there's a <code>.clone()</code>
+      here" on sight, reading any backend file gets meaningfully easier — this pattern repeats
+      constantly across a real codebase.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">chapter 4, "Understanding Ownership"</a>
+      — this is the single most important chapter in the whole book for a Python developer.
+      Comprehensive Rust spreads the same ground across
+      <a href="https://google.github.io/comprehensive-rust/references.html">"References"</a>,
+      <a href="https://google.github.io/comprehensive-rust/memory-management.html">"Memory Management"</a>,
+      and <a href="https://google.github.io/comprehensive-rust/borrowing.html">"Borrowing"</a> —
+      roughly 2.5 hours across two days versus this lesson's one field-study (see
+      <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/06_move_semantics">06_move_semantics</a>
+      exercise, which isolates exactly this move-vs-borrow-vs-clone decision, as task 1's warm-up
+      above (see <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If the "why does the second call not need <code>.clone()</code> too" reasoning doesn't fully
+      click, say so before moving on — this concept compounds into everything that follows (Lesson
+      16's <code>Arc</code> is "shared ownership," which only makes sense once single ownership
+      does).
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> lifetimes — how the compiler tracks how long a borrow stays valid,
+    read straight out of a lifetime you've already seen unexplained in this lesson's code and a
+    new one in a backend module that resolves data across a borrowed structure.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0005-structs-that-group-data.html">← Lesson 5</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0007-lifetimes-and-borrowed-data.html">Lesson 7 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

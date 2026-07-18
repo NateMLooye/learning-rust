@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 5: Structs That Group Data</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 5</span>
+    <span>
+      <a href="0004-enums-that-carry-data.html">← Lesson 4</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0006-ownership-and-borrowing.html">Lesson 6 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 5: Structs That Group Data</h1>
+  <p class="subtitle">Rust's plain data-grouping tool — no inheritance, no hidden behavior, just named fields and the functions you choose to attach to them.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Lesson 4's <code>AccessOutcome</code> models "one of several possibilities." Most real data
+    isn't a choice between variants — it's several pieces of information that belong together at
+    once. A vessel visit has a vessel name <em>and</em> a site <em>and</em> an access window, all
+    simultaneously. That's what a <code>struct</code> is for, and it's the single most common
+    shape you'll see across every backend file you open from here on.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A service like this might model visits and requests with structs like these, all within a
+    similarly small span of one file:
+  </p>
+  <pre><code>pub struct VesselVisit {
+    pub vessel: String,
+    pub site: AssetId,
+    pub window: AccessWindow,
+}
+
+pub struct TransferRequest {
+    pub id: u64,
+    pub personnel: u32,
+}
+
+pub struct AccessWindow {
+    pub opens_at: u64,
+    pub closes_at: u64,
+}</code></pre>
+  <p>
+    Notice the shape repeats: a handful of named fields, most of them plain values or other
+    domain types, all marked <code>pub</code>. A whole visit record is, structurally, nothing more
+    than a <code>VesselVisit</code> holding an <code>AssetId</code> and an <code>AccessWindow</code>
+    — structs nested inside structs, all the way down.
+  </p>
+  <p>
+    Now a struct paired with a real <code>impl</code> block:
+  </p>
+  <pre><code>#[derive(Clone)]
+pub struct CompensationReading {
+    pub heave_m: f64,
+    pub ok: bool,
+}
+
+impl CompensationReading {
+    /// Returns true if the reading is within the safe heave envelope.
+    pub fn is_safe(&amp;self, max_heave_m: f64) -&gt; bool {
+        self.ok &amp;&amp; self.heave_m.abs() &lt;= max_heave_m
+    }
+}</code></pre>
+  <p>
+    Two fields, one struct, one method. <code>impl CompensationReading { ... }</code> attaches
+    functions to the type from outside its own definition — <code>is_safe</code> takes
+    <code>&amp;self</code> to look at the reading without consuming it, plus one extra parameter,
+    and returns a fresh <code>bool</code>.
+  </p>
+
+  <details class="callout callout--vim">
+    <summary><span class="callout-label">Vim reminder — useful for this exact file</span> <code>Ctrl-v</code> <span class="gloss">— visual block: select a column across struct field lines</span></summary>
+    <div class="details-body">
+    <p>
+      <code>Ctrl-v</code> starts visual block mode — a rectangular column selection rather than
+      whole lines. <code>VesselVisit</code>'s <code>pub field: Type,</code> lines are a
+      good place to try it: select the <code>pub </code> column across several lines at once
+      instead of retyping the prefix on each one. The same trick works for adding or removing a
+      shared prefix on any run of struct fields.
+    </p>
+    </div>
+  </details>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong>A struct groups named fields into one type.</strong>
+      <code>struct Name { field: Type, ... }</code> defines it; <code>Name { field: value, ... }</code>
+      creates ("instantiates") one. Every field must be given a value at construction — there's no
+      partial construction, no implicit <code>null</code>/<code>None</code> default, unless you
+      write one yourself.
+    </li>
+    <li>
+      <strong>Field access is direct.</strong> <code>visit.vessel</code> reads the field, plain
+      and simple — no getter method required, no boilerplate. <code>VesselVisit</code>,
+      <code>TransferRequest</code>, and <code>AccessWindow</code> all mark their fields <code>pub</code> and
+      leave it at that; a getter method that just returns a field verbatim would add a layer of
+      indirection without hiding anything.
+    </li>
+    <li>
+      <strong><code>impl Name { ... }</code> attaches functions to the type.</strong> A function
+      whose first parameter is <code>&amp;self</code> is a <strong>method</strong>, called with
+      <code>instance.method()</code> — same borrowing rules from Lesson 4's
+      <code>&amp;AccessOutcome</code> apply here, <code>&amp;self</code> just means "look, don't
+      consume." A function with no <code>self</code> parameter is an
+      <strong>associated function</strong>, called with <code>Type::function(...)</code> instead —
+      <code>String::from(...)</code>, which you've already used, is exactly this.
+    </li>
+    <li>
+      <strong>No inheritance between structs.</strong> Unlike a Python class hierarchy, there's no
+      "struct extends struct." Shared behavior across different structs comes from traits
+      (Lesson 11), not from one struct being a subtype of another.
+    </li>
+    <li>
+      <strong>One small piece of syntax for the exercise below:</strong> every <code>Vec&lt;T&gt;</code>
+      has a <code>.len()</code> method that returns how many elements it holds — the equivalent of
+      Python's <code>len(some_list)</code>, just spelled as a method instead of a built-in
+      function. Its return type is <code>usize</code>: an unsigned (never negative) integer sized
+      to match the platform's pointer width, Rust's standard type for lengths, counts, and
+      indices. Lesson 9 covers <code>Vec</code> properly; this is just enough to call one method on
+      it.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing <code>AccessRun</code>/<code>ready_count</code> below, get plain struct
+        definition and field access under your fingers first, with no domain shape to match
+        yet. Copy just the first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/07_structs">07_structs</a>
+        set, <code>structs1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green
+        — see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more on how a struct
+        is defined than the theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch05-01-defining-structs.html">"Defining and
+        Instantiating Structs"</a> section goes deeper.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>07_structs</code>
+        (<code>structs2.rs</code> onward, including tuple/unit structs) is good additional
+        practice, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Write a method's body — the struct, signature, and test are given</span>
+      <p>Add this to <code>src/lib.rs</code> exactly as shown, alongside your existing <code>AccessOutcome</code> enum from Lesson 4:</p>
+      <pre><code>/// A single access run: its name, and the outcome of every transfer request in it.
+struct AccessRun {
+    name: String,
+    outcomes: Vec&lt;AccessOutcome&gt;,
+}
+
+impl AccessRun {
+    /// Returns how many outcomes in this run are `Ready`.
+    fn ready_count(&amp;self) -&gt; usize {
+        todo!()
+    }
+}
+
+#[test]
+fn ready_count_counts_only_ready_outcomes() {
+    let run = AccessRun {
+        name: "morning shift".to_string(),
+        outcomes: vec![
+            AccessOutcome::Ready,
+            AccessOutcome::EscortRequired,
+            AccessOutcome::Blocked("high seas".to_string()),
+            AccessOutcome::Ready,
+        ],
+    };
+    assert_eq!(run.ready_count(), 2);
+}</code></pre>
+      <p>
+        <strong>Write the body of <code>ready_count</code> yourself.</strong>
+        <code>AccessRun</code> is deliberately shaped like <code>VesselVisit</code> from the field
+        study: a <code>String</code> field plus a domain-typed field. This one needs a loop over
+        <code>outcomes</code> with a <code>match</code> inside it (Lesson 4's skill, reused) to
+        count only the <code>Ready</code> variant. Get
+        <code>cargo test ready_count_counts_only_ready_outcomes</code> green.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: feel "every field is required" for real</span>
+    <p>
+      Try constructing an <code>AccessRun</code> with only the <code>name</code> field, leaving
+      <code>outcomes</code> out entirely. Read the "missing field" compiler error — this is the
+      "no partial construction" rule from the theory section, triggered on purpose rather than
+      taken on faith.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> A struct-plus-method you wrote against a real test, shaped like the <code>VesselVisit</code> struct from the field study above, reusing Lesson 4's enum and <code>match</code> skill inside a method body.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      "A handful of named fields, an <code>impl</code> block attaching behavior" is the single
+      most repeated shape in a real backend codebase — <code>VesselVisit</code>,
+      <code>TransferRequest</code>, <code>AccessWindow</code>, <code>CompensationReading</code>, and
+      dozens more all follow it. Once you can recognize a struct definition and its
+      <code>impl</code> block on sight, a new backend file stops looking unfamiliar and starts
+      looking like a variation on a pattern you already know.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch05-00-structs.html">chapter 5, "Using Structs to Structure Related Data"</a>
+      — sections 5.1 ("Defining and Instantiating Structs") and 5.3 ("Method Syntax") cover
+      exactly this lesson's ground, in more depth. Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/user-defined-types/named-structs.html">"Named Structs"</a>
+      slide is a direct match (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>).
+      You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/07_structs">07_structs</a>
+      exercise, the same fix-it-until-it-compiles shape as this course's own exercises, as task
+      1's warm-up above (see <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If the difference between a method (<code>&amp;self</code>) and an associated function (no
+      <code>self</code>, called as <code>Type::function()</code>) feels blurry, ask now — Lesson
+      11 assumes you can tell them apart when you design a trait's own method signatures.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> ownership and borrowing — the concept most Python developers find
+    genuinely new about Rust, and the reason <code>ready_count</code>'s <code>&amp;self</code>
+    above borrows <code>AccessRun</code> instead of consuming it every time you call it.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0004-enums-that-carry-data.html">← Lesson 4</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0006-ownership-and-borrowing.html">Lesson 6 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 17: Modules &amp; Visibility</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 17</span>
+    <span>
+      <a href="0016-shared-state-and-arc.html">← Lesson 16</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0018-cargo-workspaces.html">Lesson 18 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 17: Modules &amp; Visibility</h1>
+  <p class="subtitle">Your <code>lib.rs</code> has a dozen lessons crammed into one file by now. Time to split it up — the same mechanism a real backend crate uses to organize itself into files.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    By now <code>src/lib.rs</code> has functions, structs, enums, and traits from a dozen different
+    lessons all in one file. That's exactly the pressure that makes real codebases split into
+    modules — a smaller-scale version of the same pressure that eventually pushes a crate to split
+    into a multi-crate workspace, which is its own lesson right after this one.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A backend crate for this domain might declare its modules like this:
+  </p>
+  <pre><code>pub mod access;
+/// Telemetry ingestion from vessel and asset sensor feeds
+pub mod telemetry;
+/// Access-window and operating-parameter policy evaluation
+pub mod policy;
+pub mod health;
+pub mod concurrency;</code></pre>
+  <p>
+    Five <code>pub mod</code> declarations, each one covering ground you've effectively already
+    read about in earlier field studies — <code>access</code> mirrors Lesson 4's
+    <code>AccessOutcome</code> modeling, <code>policy</code> mirrors Lesson 9's operating-parameter
+    merging, <code>concurrency</code> mirrors Lesson 16's <code>Arc</code>-shared
+    <code>ControllerState</code>. <code>health</code> is the one exception: there's no
+    <code>health.rs</code>, because it's a directory with its own <code>src/health/mod.rs</code> —
+    the second form the theory below describes.
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong><code>mod</code></strong> declares a module. <code>mod foo;</code> in
+      <code>lib.rs</code> tells Rust to look for the module's code in <code>src/foo.rs</code> (or
+      <code>src/foo/mod.rs</code> — the form <code>health</code> uses above). Everything inside is
+      private by default; <code>pub mod foo;</code> or <code>pub fn</code>/<code>pub struct</code>
+      inside it makes specific things visible from outside.
+    </li>
+    <li>
+      <strong>A module is a namespace, not a new crate.</strong> Splitting a file into modules
+      doesn't change what the code does — it changes how it's organized and what's visible to
+      what. This is a much smaller step than splitting one crate into many, but the same underlying
+      motivation: one giant file becomes hard to navigate.
+    </li>
+    <li>
+      <strong><code>pub use</code></strong> re-exports a name through a new path.
+      <code>pub use basics::add;</code> in <code>lib.rs</code> means callers can still write
+      <code>rust_practice::add</code> even after <code>add</code> moves into <code>basics.rs</code>
+      — the public API stays flat while the file layout underneath it changes.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before splitting <code>lib.rs</code> below, practice module visibility and paths on their
+        own, on a small file where getting <code>pub</code> wrong doesn't put a dozen lessons'
+        code at risk. Copy just the first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/10_modules">10_modules</a>
+        set, <code>modules1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green
+        — see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps (note: this warm-up still
+        lives under <code>src/bin/</code> as its own binary target — a separate mechanism from
+        the <code>mod</code> split you're about to do inside the library target itself). For more
+        depth than the theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch07-00-managing-growing-projects-with-packages-crates-and-modules.html">chapter
+        7, "Managing Growing Projects with Packages, Crates, and Modules"</a> goes further.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>10_modules</code>
+        (<code>modules2.rs</code> onward) is good additional reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>yap</code> / <code>dap</code> <span class="gloss">— yank a function into a new file, then delete the original</span></summary>
+        <div class="details-body">
+        <p>
+          This refactor is genuinely about moving text between files, not editing in place. In the
+          old <code>lib.rs</code> buffer, <code>yap</code> (<strong>y</strong>ank +
+          <strong>a</strong>round + <strong>p</strong>aragraph — the same pattern from Lesson 14,
+          blank lines act as paragraph boundaries in Rust) yanks a whole function; open the new
+          file with <code>:e src/access.rs</code>, <code>p</code> (<strong>p</strong>aste) to drop
+          it in, then delete the original with <code>dap</code> (<strong>d</strong>elete +
+          <strong>a</strong>round + <strong>p</strong>aragraph) back in <code>lib.rs</code> once
+          it's safely moved.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Split your lib.rs into modules — a real refactor, no failing test to guide you</span>
+      <p>
+        This time the "test" is that your existing tests still pass after the refactor — that's
+        the actual skill: trusting your test suite through a structural change instead of a new
+        feature.
+      </p>
+      <p>Pick a grouping that makes sense to you. One reasonable split, using the same four module names as the field study above:</p>
+      <pre><code>src/
+  lib.rs          -- just `mod` declarations + `pub use` re-exports
+  access.rs       -- AccessOutcome, AccessRun, summarize, ready_count, Outcome trait, count_ready (Lessons 4, 5, 11, 14)
+  telemetry.rs    -- resolve_access_label, both_versions, describe_parameter, ParameterName (Lessons 6, 7, 13)
+  policy.rs       -- merge_operating_parameters, parse_heave_limit, lookup_heave_limit_override (Lessons 9-10)
+  concurrency.rs  -- AccessEvent, record_access_event (Lesson 16)</code></pre>
+      <p>
+        Lessons 1-2's tiny warm-ups (<code>add</code>, <code>select_conservative_limit</code>) don't
+        fit any of the four cleanly — leave them in <code>lib.rs</code> directly, or fold them into
+        <code>access.rs</code>, your call either way.
+      </p>
+      <p>
+        In <code>lib.rs</code>, replace the flat contents with module declarations:
+        <code>mod access;</code>, <code>mod telemetry;</code>, and so on. Move each group's
+        functions/enums/traits into its own file. Your tests so far are plain <code>#[test]</code>
+        fns sitting directly next to the function they test — not yet wrapped in the convention
+        many real Rust codebases use, a <code>#[cfg(test)] mod tests { ... }</code> block at the
+        bottom of the file. Moving code into files is a natural moment to adopt that convention
+        too: gather each file's <code>#[test]</code> fns into one <code>mod tests</code> block at
+        the bottom, with <code>use super::*;</code> at the top so they can still see the functions
+        above without repeating the module path.
+      </p>
+      <p>Run:</p>
+      <pre><code>cargo test</code></pre>
+      <p>
+        Every test from every previous lesson should still pass, unchanged. If something doesn't
+        compile, it's almost always a missing <code>pub</code> or a wrong <code>use</code> path —
+        both fixable with rust-analyzer's diagnostics from Lesson 2.
+      </p>
+    </li>
+  </ol>
+
+  <p><span class="win-badge">Tangible win</span> A dozen lessons' worth of code, reorganized into real modules, with every single test still green — proof the refactor changed nothing about behavior, only structure.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      You just did, at file scale, what a real backend also does at crate scale: split one thing
+      that grew too large into named, purpose-specific pieces, without changing what any of it
+      does. The next lesson takes this same idea up one level — a real workspace's multi-crate
+      layout.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch07-00-managing-growing-projects-with-packages-crates-and-modules.html">chapter 7, "Managing Growing Projects with Packages, Crates, and Modules"</a>.
+      Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/modules.html">"Modules"</a> chapter is a
+      direct match (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You already
+      did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/10_modules">10_modules</a>
+      exercise, which isolates module visibility and paths on their own, as task 1's warm-up
+      above (see <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">Worth a clean change</span>
+    <p>
+      This is a pure structural refactor with no behavior change — a good candidate for its own
+      cleanly described jj change, separate from whatever feature work comes next. <code>jj new</code>
+      before starting, <code>jj describe</code> when the tests are green.
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If you're unsure whether a function should be <code>pub</code> or stay private after the
+      split, ask — visibility choices in module design are a real decision, not a formality, and
+      worth reasoning through rather than just adding <code>pub</code> everywhere until it compiles.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> Cargo workspaces — the same file-organization pressure you just felt,
+    one level up: splitting one crate into many, the way a real access-backend workspace does.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0016-shared-state-and-arc.html">← Lesson 16</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0018-cargo-workspaces.html">Lesson 18 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

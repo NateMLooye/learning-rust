@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 15: Conflicts &amp; jj undo, For Real</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 15</span>
+    <span>
+      <a href="0014-iterators-and-closures.html">← Lesson 14</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0016-shared-state-and-arc.html">Lesson 16 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 15: Conflicts &amp; <code>jj undo</code>, For Real</h1>
+  <p class="subtitle">jj treats conflicts as a normal, first-class state — not an emergency. And <code>jj undo</code> is always safe, not just something to read about.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    In git, a conflict stops you mid-operation and demands resolution before you can do anything
+    else. In jj, a conflict is just... a state a change can be in. You can keep working, look at
+    other changes, even commit on top of a conflicted change, and resolve it whenever you're ready.
+    This is a real, deliberate design difference — worth experiencing once under low stakes.
+  </p>
+
+  <h2>Today's tasks (in <code>rust-practice</code>)</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Manufacture a real conflict, from a common base</span>
+      <p>
+        A real conflict comes from two <em>sibling</em> changes that both edit the same line, not
+        from a change and something built on top of it — rebasing an ancestor onto its own
+        descendant isn't a meaningful operation, there's no "before" and "after" there, just one
+        line of history. Build a small, disposable fork instead, in a dedicated file so nothing
+        real is at risk:
+      </p>
+      <pre><code>jj new -m "conflict-demo: base"
+echo "original line" &gt; access-policy.txt</code></pre>
+      <p>
+        Run <code>jj log</code> and note this change's ID — call it <code>&lt;base&gt;</code> for
+        the rest of this exercise. Now create a left child of it:
+      </p>
+      <pre><code>jj new -m "conflict-demo: left"
+echo "left version" &gt; access-policy.txt</code></pre>
+      <p>
+        Note this change's ID too — call it <code>&lt;left&gt;</code>. Now go back and create a
+        <em>right sibling</em> — a second child of <code>&lt;base&gt;</code>, not of
+        <code>&lt;left&gt;</code> — by naming <code>&lt;base&gt;</code> explicitly. Substitute the
+        real ID you noted above wherever you see <code>&lt;base&gt;</code>:
+      </p>
+      <pre><code>jj new -m "conflict-demo: right" &lt;base&gt;
+echo "right version" &gt; access-policy.txt</code></pre>
+      <p>
+        <code>jj log</code> should now show <code>&lt;base&gt;</code> with two children —
+        <code>left</code> and <code>right</code> — each disagreeing about the same line, neither
+        one a descendant of the other. Rebase <code>right</code> (your current change, <code>@</code>)
+        onto <code>left</code> and watch what happens — substitute your own <code>&lt;left&gt;</code>
+        ID:
+      </p>
+      <pre><code>jj rebase -r @ -d &lt;left&gt;</code></pre>
+      <p>
+        This replays the <code>right</code> edit on top of <code>left</code> instead of on top of
+        the shared base — and since both sides touched the same line differently, jj can't merge
+        them silently.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Look at the conflict without panicking</span>
+      <p>
+        <code>jj st</code> will tell you <code>access-policy.txt</code> is conflicted. Open the
+        file. jj does <strong>not</strong> render git's plain three-marker format here — it
+        materializes a richer conflict, showing one side as a diff against the shared base and the
+        other as plain content, roughly like this (your own change IDs and hashes will differ):
+      </p>
+      <pre><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; Conflict 1 of 1
+%%%%%%% diff from: &lt;base&gt; ... "conflict-demo: base" (parents of rebased revision)
+       to: &lt;left&gt; ... "conflict-demo: left" (rebase destination)
+-original line
++left version
++++++++ &lt;right&gt; ... "conflict-demo: right" (rebased revision)
+right version
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; Conflict 1 of 1 ends</code></pre>
+      <p>
+        Nothing is blocking you. You could switch to a different change entirely, or run
+        <code>jj diff</code> to see the same conflict summarized from the outside instead of
+        materialized into the file. <code>cargo test</code> in the practice crate is unaffected
+        either way — <code>access-policy.txt</code> isn't part of the Rust build.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>/&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> <span class="gloss">— search forward to the first conflict marker</span></summary>
+        <div class="details-body">
+        <p>
+          <code>/&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> — a plain text search, not a mnemonic
+          command — jumps forward to the first conflict marker, faster than scrolling to find
+          where a conflict starts in a longer file. <code>n</code> repeats the same search forward
+          if there's more than one conflicted region.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Resolve it</span>
+      <p>
+        Edit <code>access-policy.txt</code> directly, remove every marker line
+        (<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> through <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>
+        and the <code>%%%%%%%</code>/<code>+++++++</code> lines in between), keep whichever
+        version (or a hand-merge of both) makes sense, save. Run <code>jj st</code> again to
+        confirm the conflict is gone.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Now break something on purpose, and recover</span>
+      <p>
+        Run <code>jj abandon &lt;base&gt;::</code> (the <code>::</code> means "this change and
+        everything descended from it," so this removes the whole conflict-demo fork — base, left,
+        and right — in one operation). Then:
+      </p>
+      <pre><code>jj undo</code></pre>
+      <p>
+        Confirm with <code>jj log</code> that all three conflict-demo changes are back. This is
+        the actual safety net, exercised on purpose instead of discovered by accident under
+        pressure — and it works exactly the same way on a multi-change abandon as it did on the
+        exercise abandon above.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">Going further back</span>
+    <p>
+      <code>jj undo</code> only reverts the single most recent operation. For anything further
+      back, <code>jj op log</code> shows the full operation history, and
+      <code>jj op restore &lt;op-id&gt;</code> restores the repo to any prior state — not just one
+      step back.
+    </p>
+  </div>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">Clean up when you're done</span>
+    <p>
+      <code>access-policy.txt</code> and its three changes were disposable, purely to manufacture
+      a conflict safely — once you're satisfied you've seen it, resolved it, and recovered from a
+      mistake, remove them from your real history with the same command from the step above, this
+      time for real (no <code>jj undo</code> after):
+    </p>
+    <pre><code>jj abandon &lt;base&gt;::</code></pre>
+    <p>
+      Confirm with <code>jj log</code> that the three conflict-demo changes are gone and
+      <code>jj st</code> shows <code>access-policy.txt</code> no longer tracked.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> A conflict you caused, saw, and resolved without anything breaking — and a genuine mistake you recovered from with one command.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Real conflicts happen constantly whenever more than one person touches the same files in a
+      real backend codebase. The panic response ("did I just lose my work?") is the wrong instinct
+      in jj — this lesson exists so that instinct isn't your first experience of a real conflict
+      on real work.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      <a href="https://jj-vcs.github.io/jj/latest/">The Jujutsu tutorial</a>, section on conflicts
+      as first-class state. No Comprehensive Rust or Rustlings equivalent — neither teaches a VCS.
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If the conflict markers look unfamiliar or the rebase command's flags
+      (<code>-r</code>/<code>-d</code>) are confusing, ask before resolving — better to understand
+      what you're editing than to guess and get lucky.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> back to Rust — <code>Arc</code> and shared state, tied to a
+    synthetic <code>Ctx = Arc&lt;ControllerState&gt;</code> and the shared, mutable state it
+    protects.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0014-iterators-and-closures.html">← Lesson 14</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0016-shared-state-and-arc.html">Lesson 16 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

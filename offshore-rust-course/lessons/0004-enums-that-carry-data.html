@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4: Enums That Carry Data</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 4</span>
+    <span>
+      <a href="0003-your-first-jj-change.html">← Lesson 3</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0005-structs-that-group-data.html">Lesson 5 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 4: Enums That Carry Data</h1>
+  <p class="subtitle">Rust's closest thing to a superpower — and the exact mechanism a backend service like this uses to model errors, outcomes, and state.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Enums-with-data plus exhaustive <code>match</code> are a backend's central modeling tool — its
+    error types, its outcomes, and its state transitions all lean on this one mechanism. If you can
+    read a <code>match</code> block confidently, a large fraction of a real backend stops being
+    intimidating.
+  </p>
+
+  <h2>Field study first — read a real shape before you write anything</h2>
+  <p>
+    A service like this might model transfer failures with an enum like the one below. Open your
+    editor, paste it into a scratch file (rust-analyzer from Lesson 2 will give you hover on
+    everything), and read it whole before moving on — no need to write the answers down anywhere:
+  </p>
+  <pre><code>/// Why a transfer request could not proceed.
+enum TransferError {
+    OutsideWindow,
+    CompensationFaulted(String),
+    EscortUnavailable { needed: u32, available: u32 },
+}
+
+impl TransferError {
+    fn message(&amp;self) -&gt; String {
+        match self {
+            TransferError::OutsideWindow =&gt; "no active access window".to_string(),
+            TransferError::CompensationFaulted(reason) =&gt; format!("compensation faulted: {reason}"),
+            TransferError::EscortUnavailable { needed, available } =&gt;
+                format!("need {needed} escorts, only {available} available"),
+        }
+    }
+}</code></pre>
+  <p>Answer these for yourself before moving on:</p>
+  <ul>
+    <li>How many variants does <code>TransferError</code> have, and which one is shaped differently from the other two?</li>
+    <li><code>message()</code> uses <code>match self { ... }</code>. What does the <code>self</code> pattern in each arm actually bind — the whole enum, or just the data inside one variant?</li>
+    <li><code>EscortUnavailable { needed, available }</code> is the odd one out. What kind of data does it hold, compared to <code>CompensationFaulted</code> holding a plain <code>String</code>?</li>
+  </ul>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      A Rust enum is a <strong>sum type</strong>: a value is <em>exactly one</em> of the listed
+      variants, never more than one, never a mix. Unlike Python's <code>enum.Enum</code>, which is
+      usually just a set of named constants, <strong>Rust enum variants can carry their own
+      data</strong> — <code>CompensationFaulted(String)</code> is a variant that holds a
+      <code>String</code>, right there in its definition.
+    </li>
+    <li>
+      <code>match</code> is <strong>exhaustive</strong>: the compiler refuses to build if you forget
+      a variant. In Python, a forgotten <code>elif</code> branch just silently does nothing at
+      runtime. In Rust, a forgotten match arm is a compile error, not a bug waiting to happen in
+      production.
+    </li>
+    <li>
+      <strong>Pattern binding:</strong> <code>CompensationFaulted(reason) =&gt; reason.clone()</code> —
+      the <code>reason</code> in that pattern is bound to the <code>String</code> stored inside
+      that specific variant, and only exists inside that one match arm.
+    </li>
+    <li>
+      One new piece of syntax for the exercise: <code>format!("...{}...", value)</code> builds a
+      <code>String</code> by substituting <code>value</code> into the <code>{}</code> — the same
+      job as Python's f-strings or <code>.format()</code>.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing the match body below, practice exhaustive <code>match</code> on its own,
+        away from the domain's real error type. Copy just the first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/08_enums">08_enums</a>
+        set, <code>enums1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green —
+        see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more on how an enum is
+        defined than the theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html">"Defining an
+        Enum"</a> section goes deeper.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>08_enums</code>
+        (<code>enums2.rs</code> onward) covers more variant shapes and matching patterns — good
+        reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>.</code> <span class="gloss">— repeat the last change exactly</span></summary>
+        <div class="details-body">
+        <p>
+          <code>.</code> (the dot-repeat command) repeats the last change exactly — not a
+          mnemonic letter, just a symbol worth knowing by name. Once you write one match arm and
+          move to the next with <code>j</code>, if the edit shape repeats (not necessarily the
+          content), try <code>.</code> before retyping by hand.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Write the match body — the enum, signature, and test are given</span>
+      <p>
+        This is scaffold, not the exercise. Add it to <code>src/lib.rs</code> exactly as shown:
+      </p>
+      <pre><code>/// The result of evaluating a single transfer request.
+enum AccessOutcome {
+    Ready,
+    Blocked(String),
+    EscortRequired,
+}
+
+/// Returns a one-line human-readable summary of an access outcome.
+fn summarize(outcome: &amp;AccessOutcome) -&gt; String {
+    todo!()
+}
+
+#[test]
+fn summarizes_each_outcome() {
+    assert_eq!(summarize(&amp;AccessOutcome::Ready), "READY");
+    assert_eq!(summarize(&amp;AccessOutcome::Blocked("high seas".to_string())), "BLOCKED: high seas");
+    assert_eq!(summarize(&amp;AccessOutcome::EscortRequired), "ESCORT REQUIRED");
+}</code></pre>
+      <p>
+        One thing in that signature is new and unexplained on purpose: the <code>&amp;</code> in
+        <code>&amp;AccessOutcome</code> means <em>borrow</em> this value rather than take ownership of
+        it — <code>summarize</code> only needs to look at the outcome, not consume it. A full
+        lesson on ownership and borrowing is coming soon; for now, just know that matching on a
+        <code>&amp;AccessOutcome</code> works the same way as matching on a plain <code>AccessOutcome</code>
+        — Rust handles the borrowing inside each match arm for you. (This is exactly the shape
+        <code>message(&amp;self)</code> uses in the <code>TransferError</code> field study above —
+        a method taking <code>&amp;self</code> is this same pattern, just spelled as a method
+        instead of a free function.)
+      </p>
+      <p>
+        <strong>Write the <code>match outcome { ... }</code> body yourself</strong>, handling all
+        three variants, using <code>format!</code> for the <code>Blocked</code> case. Run
+        <code>cargo test summarizes_each_outcome</code> until it's green.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: feel the exhaustiveness check for real</span>
+    <p>
+      Once green, comment out your <code>EscortRequired</code> match arm and run <code>cargo build</code>.
+      Read the <code>non-exhaustive patterns</code> error rust-analyzer/rustc gives you before
+      uncommenting it. This is the actual compiler guarantee the theory section described — not an
+      abstract claim, a real error you triggered on purpose.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> A three-variant <code>match</code> you wrote yourself, modeled on the same shape as the <code>TransferError</code> field study above.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      <code>AccessOutcome</code> is a simplified stand-in — a real backend's equivalents
+      (error types, request outcomes, state transitions) follow the identical shape: an enum with
+      differently-shaped variants, and one or more <code>match</code> blocks that handle every one
+      of them. You now know how to read those on sight.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch06-00-enums.html">chapter 6, "Enums and Pattern Matching"</a>
+      covers everything in this lesson's theory section in more depth, with more examples than a
+      single lesson can carry. Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/user-defined-types.html">"User-Defined Types"</a>
+      and       <a href="https://google.github.io/comprehensive-rust/pattern-matching.html">"Pattern Matching"</a>
+      chapters go further — destructuring, match guards, <code>@</code>-bindings — beyond what
+      this lesson covers (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You
+      already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/08_enums">08_enums</a>
+      exercise, which isolates exhaustive <code>match</code> on its own, as task 1's warm-up above
+      (see <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">If you did Lesson 3</span>
+    <p>
+      <code>jj new</code> before starting this lesson, <code>jj describe</code> when you're done —
+      no new jj concepts here, just the habit from last time.
+    </p>
+  </div>
+
+  <div class="callout callout--checkpoint">
+    <span class="callout-label">Retrieval checkpoint — Lessons 1-3, closed-book, ~2 min</span>
+    <p>
+      Answer from memory, no scrolling back, before you open the reveal below:
+    </p>
+    <ol>
+      <li>What decides whether the last line of a function's body is its return value, or gets thrown away?</li>
+      <li>What's the one idea that makes jj's working copy fundamentally different from git's staging area?</li>
+    </ol>
+    <details>
+      <summary>Reveal the answers</summary>
+      <div class="details-body">
+        <p>
+          <strong>1.</strong> Whether it ends in a semicolon. No semicolon, and it's an
+          expression — its value becomes the function's return value. A trailing semicolon turns
+          it into a statement, and the block's type becomes <code>()</code> instead (Lesson 1).
+        </p>
+        <p>
+          <strong>2.</strong> There is no staging area — the working copy <em>is</em> a commit.
+          Every edit is automatically part of the current change; <code>jj describe</code> names
+          it, <code>jj new</code> starts a fresh one (Lesson 3).
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If the exhaustiveness error in the optional step doesn't show up, or the field-study
+      questions left you unsure rather than curious, stop and ask before writing the match body —
+      guessing your way through pattern syntax without the underlying model is a bad trade.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> <a href="0005-structs-that-group-data.html">Lesson 5</a> groups the
+    enum and <code>match</code> arms you just wrote alongside a real data shape — structs, the way
+    a backend bundles several related fields (a vessel, a site, a time window) into one
+    type. That unexplained <code>&amp;</code> from this lesson's signature gets its own full
+    lesson (Lesson 6, ownership and borrowing) right after.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0003-your-first-jj-change.html">← Lesson 3</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0005-structs-that-group-data.html">Lesson 5 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

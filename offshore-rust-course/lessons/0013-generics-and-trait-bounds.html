@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 13: Generics &amp; Trait Bounds</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 13</span>
+    <span>
+      <a href="0012-jj-squash-and-split.html">← Lesson 12</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0014-iterators-and-closures.html">Lesson 14 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 13: Generics &amp; Trait Bounds</h1>
+  <p class="subtitle">Compile-time duck typing — one function, many types, checked before it ever runs.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Python's duck typing means <code>len(x)</code> works on anything with a <code>__len__</code>,
+    found out at call time. Rust generics get you the same flexibility — one function definition,
+    many concrete types — but the compiler verifies every possible type satisfies the requirements
+    <em>before</em> your code ever runs.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>Two synthetic one-liners, from a backend's telemetry module:</p>
+  <pre><code>// access-service/src/telemetry.rs:41-43
+pub fn text&lt;T: ToString&gt;(t: T) -&gt; Self {
+    Self::Text(t.to_string())
+}
+
+// access-service/src/lib.rs:118
+pub fn new&lt;I: Into&lt;String&gt;&gt;(id: I) -&gt; Self {</code></pre>
+  <p>
+    <code>SensorReading::text</code> accepts <em>anything</em> that implements <code>ToString</code>
+    — an <code>i64</code>, a <code>&amp;str</code>, a custom type, whatever — and calls
+    <code>.to_string()</code> on it. <code>SensorId::new</code> accepts anything convertible
+    <em>into</em> a <code>String</code>. Both patterns let callers pass a <code>&amp;str</code>
+    literal directly without an explicit <code>.to_string()</code> at every call site.
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong>Generic syntax:</strong> <code>fn name&lt;T&gt;(param: T)</code> — <code>T</code> is a
+      placeholder for "some type, decided by the caller." Without a bound, the compiler only lets
+      you do things every possible type can do (which is almost nothing useful).
+    </li>
+    <li>
+      <strong>A trait bound</strong> (<code>T: ToString</code>) restricts <code>T</code> to types
+      implementing that trait, unlocking its methods inside the function. This is the actual
+      mechanism — generics and traits aren't separate topics, bounds are where they meet.
+    </li>
+    <li>
+      <code>ToString</code> and <code>Into&lt;String&gt;</code> are both real, ordinary traits — the
+      same kind of thing you designed yourself in Lesson 11, just from the standard library instead
+      of hand-written.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing <code>describe_parameter</code> and <code>ParameterName::new</code> below,
+        practice generic functions and trait bounds on their own, away from the backend's real
+        <code>SensorReading::text</code>/<code>SensorId::new</code>. Copy just the first file of
+        Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/14_generics">14_generics</a>
+        set, <code>generics1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green
+        — see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more depth than the
+        theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch10-01-syntax.html">"Generic Data Types"</a>
+        section goes further.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>14_generics</code>
+        (<code>generics2.rs</code> onward) is good additional reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>ci&lt;</code> <span class="gloss">— replace just the trait bound inside the angle brackets</span></summary>
+        <div class="details-body">
+        <p>
+          Same <strong>c</strong>hange + <strong>i</strong>nner pattern from Lesson 7's
+          <code>ci&lt;</code> on a lifetime: a <code>&lt;T: Display&gt;</code> bound list is the
+          same angle-bracket text object, so <code>ci&lt;</code> replaces just the bound without
+          retyping the brackets. Useful if you experiment with a different bound
+          (<code>ToString</code>? <code>Into&lt;String&gt;</code>?) before settling on
+          <code>Display</code>.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Design two generic signatures from a description — no scaffold this time</span>
+      <p>
+        Same deliberate scaffold fading as Lessons 2, 7, and 11 — description and test only, full
+        signatures (including the generic parameters and their bounds) yours to design, tests
+        given first:
+      </p>
+      <blockquote>
+        Write a function <code>describe_parameter</code> that accepts anything implementing
+        <code>std::fmt::Display</code> and returns a <code>String</code> like
+        <code>"value: X"</code>, where <code>X</code> is that value's displayed form.
+      </blockquote>
+      <pre><code>#[test]
+fn describe_parameter_formats_any_displayable_value() {
+    assert_eq!(describe_parameter(5), "value: 5");
+    assert_eq!(describe_parameter("high seas"), "value: high seas");
+}</code></pre>
+      <p>
+        <strong>Write the full signature and body yourself</strong> — generic parameter, trait
+        bound, and all. No stub this time. <code>format!</code> works directly with anything
+        implementing <code>Display</code>. Get <code>cargo test describe_parameter_formats_any_displayable_value</code>
+        green.
+      </p>
+      <p>Now a second design, this time a constructor rather than a free function:</p>
+      <blockquote>
+        Define a tuple struct <code>ParameterName(String)</code> with a constructor
+        <code>new</code> that accepts anything convertible <code>Into&lt;String&gt;</code>.
+      </blockquote>
+      <pre><code>#[derive(Debug, PartialEq)]
+struct ParameterName(String);
+
+#[test]
+fn parameter_name_new_accepts_anything_into_string() {
+    assert_eq!(ParameterName::new("heave_limit"), ParameterName("heave_limit".to_string()));
+    assert_eq!(ParameterName::new("heave_limit".to_string()), ParameterName("heave_limit".to_string()));
+}</code></pre>
+      <p>
+        <strong>Write <code>new</code>'s full signature and body yourself</strong> — the same
+        generic-constructor shape as the field study's <code>SensorId::new</code> above, just on
+        your own type this time. Get <code>cargo test parameter_name_new_accepts_anything_into_string</code>
+        green too.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: see the bound actually enforced</span>
+    <p>
+      Define a tiny struct with no <code>Display</code> impl (just <code>struct Thing;</code>) and
+      try calling <code>describe_parameter(Thing)</code>. Read the compiler error — it names the
+      exact trait that's missing. That's the "checked before it runs" guarantee from the top of
+      this lesson, made concrete.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> Two generic signatures you designed end-to-end, using the same bound-on-a-standard-trait pattern the field study's backend code uses twice.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      <code>SensorReading::text</code> and <code>SensorId::new</code> exist so callers throughout
+      a real codebase can write <code>SensorReading::text("42.1")</code> instead of
+      <code>SensorReading::Text("42.1".to_string())</code> everywhere — a small ergonomic win that
+      repeats often across a real backend codebase.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch10-01-syntax.html">"Generic Data Types"</a> section,
+      and <a href="https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters">"Traits as Parameters"</a>
+      for the bound syntax specifically. Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/generics.html">"Generics"</a> chapter is
+      a direct match, and additionally covers <code>impl Trait</code>/<code>dyn Trait</code>
+      positions this lesson doesn't (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>).
+      You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/14_generics">14_generics</a>
+      exercise, which isolates generic functions and structs on their own, as task 1's warm-up
+      above (see <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--checkpoint">
+    <span class="callout-label">Retrieval checkpoint — Lessons 10-12, closed-book, ~2 min</span>
+    <p>
+      Answer from memory before opening the reveal:
+    </p>
+    <ol>
+      <li>What's the difference in intent between an <code>anyhow::Result</code> and a hand-written <code>thiserror</code> enum?</li>
+      <li>What does <code>jj squash</code> do to the current change?</li>
+    </ol>
+    <details>
+      <summary>Reveal the answers</summary>
+      <div class="details-body">
+        <p>
+          <strong>1.</strong> <code>thiserror</code> defines specific, matchable error variants
+          for library code whose callers react differently per error; <code>anyhow</code> is for
+          application code that just needs one good human-readable message, no per-variant
+          matching (Lesson 10).
+        </p>
+        <p>
+          <strong>2.</strong> It folds the current change into its parent, keeping the parent's
+          description (Lesson 12).
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If <code>T: ToString</code> vs <code>T: Into&lt;String&gt;</code> vs
+      <code>T: std::fmt::Display</code> feels like three names for the same idea, ask — they're
+      related but genuinely different, and the difference explains why a real codebase might pick
+      a different one for each of two similarly-shaped functions, the way the field study does.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> iterators and closures — including a one-liner that validates an
+    entire list of checks using the <code>Outcome</code> trait you designed in Lesson 11.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0012-jj-squash-and-split.html">← Lesson 12</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0014-iterators-and-closures.html">Lesson 14 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

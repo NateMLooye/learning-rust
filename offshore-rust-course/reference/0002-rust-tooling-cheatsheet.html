@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference: Rust Tooling Cheatsheet</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends</span>
+    <span>
+      <a href="../MISSION.md">Mission</a>
+      <a href="0001-rust-backend-map.html">Concept map</a>
+      <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map</a>
+      <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet</a>
+      <a href="0005-rustlings-map.html">Rustlings map</a>
+      <a href="../lessons/0001-open-rust-with-feedback.html">Lesson 1</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Reference: Rust Tooling Cheatsheet</h1>
+  <p class="subtitle">Cargo, rust-analyzer, an editor/LSP, and version-control commands — one page.</p>
+
+  <p>
+    This is the command reference to keep open in a terminal pane. It does not explain
+    <em>why</em> each tool exists in depth — see <code>RESOURCES.md</code> for the primary
+    sources — it's for quickly recalling the exact incantation.
+  </p>
+
+  <h2>Cargo</h2>
+  <table>
+    <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>cargo new --lib &lt;name&gt;</code></td><td>Scaffold a new library crate (mirrors this course's inline-test style).</td></tr>
+      <tr><td><code>cargo check</code></td><td>Type-check without producing a binary. Fastest feedback loop.</td></tr>
+      <tr><td><code>cargo build</code></td><td>Compile the crate/workspace (debug profile by default).</td></tr>
+      <tr><td><code>cargo run</code></td><td>Build and run the binary target.</td></tr>
+      <tr><td><code>cargo test</code></td><td>Run every <code>#[test]</code>/<code>#[tokio::test]</code> in the crate.</td></tr>
+      <tr><td><code>cargo test &lt;substring&gt;</code></td><td>Run only tests whose name contains the substring — e.g. <code>cargo test lesson_01</code>.</td></tr>
+      <tr><td><code>cargo clippy</code></td><td>Lint for idiomatic/correctness issues beyond what the compiler checks.</td></tr>
+      <tr><td><code>cargo clippy --workspace</code></td><td>Same, across every crate in a workspace.</td></tr>
+      <tr><td><code>cargo fmt</code></td><td>Auto-format the code per <code>rustfmt.toml</code>.</td></tr>
+      <tr><td><code>cargo fmt --check</code></td><td>Verify formatting without changing files — what CI runs.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="rustlings-warmup">Wiring a Rustlings exercise into rust-practice</h2>
+  <p>
+    Several lessons point at a single <a href="https://rustlings.rust-lang.org/">Rustlings</a>
+    exercise <em>set</em> as a warm-up rep, done before that lesson's domain-tied task — the
+    same mechanic, isolated, with no domain context to juggle yet (see
+    <a href="0005-rustlings-map.html">the Rustlings cross-map</a> for how each lesson's pick was
+    chosen). The wiring is identical every time, so it's written once here instead of repeated in
+    every lesson.
+  </p>
+  <p>
+    <strong>Each linked set is a small directory of a few numbered files, not one file</strong> —
+    e.g. <code>exercises/02_functions/</code> holds <code>functions1.rs</code> through
+    <code>functions5.rs</code> plus a <code>README.md</code>. A lesson's link goes to that
+    directory so you can browse it; grab the actual <code>.rs</code> files with one of these:
+  </p>
+  <ol>
+    <li>
+      <strong>One-off, no local clone:</strong> <code>curl</code> each numbered file straight from
+      <code>raw.githubusercontent.com</code> (swap in the set/file you want):
+      <pre><code>curl -s -o rust-practice/src/bin/functions1.rs \
+  https://raw.githubusercontent.com/rust-lang/rustlings/main/exercises/02_functions/functions1.rs</code></pre>
+      <code>-o &lt;path&gt;</code> renames on the way in; drop it and use <code>-O</code> instead to
+      keep Rustlings' own filename. <code>curl</code> ships with macOS by default —
+      <strong><code>wget</code> doesn't</strong> (you'd need <code>brew install wget</code>), so
+      <code>curl</code> is the native tool here, not a workaround.
+    </li>
+    <li>
+      <strong>Doing this across several lessons? Clone once, reuse.</strong> Git's unit of cloning
+      is a whole repository — there's no direct "clone one file." The practical equivalent, since
+      the whole Rustlings repo is small, is a one-time shallow clone kept <em>outside</em>
+      <code>rust-practice</code>:
+      <pre><code>git clone --depth 1 https://github.com/rust-lang/rustlings rustlings-src</code></pre>
+      then just <code>cp</code> whichever numbered files a lesson needs, with no repeated network
+      calls for the rest of the course:
+      <pre><code>cp rustlings-src/exercises/02_functions/functions1.rs rust-practice/src/bin/</code></pre>
+    </li>
+    <li>
+      Either way, land each numbered file you're using directly under <code>src/bin/</code> as its
+      own file — they're independent (no shared state between <code>functions1.rs</code> and
+      <code>functions2.rs</code>), so one file per binary is the natural fit.
+      <strong>No <code>Cargo.toml</code> edit needed</strong> — Cargo auto-discovers every
+      <code>.rs</code> file directly under <code>src/bin/</code> as its own binary target, named
+      after the file. See the Cargo Book's
+      <a href="https://doc.rust-lang.org/cargo/reference/cargo-targets.html#binaries">binary target
+      reference</a> for the mechanism.
+    </li>
+    <li>
+      Run one: <code>cargo test --bin functions1</code>. Run everything you've wired up so far
+      (every <code>src/bin/*.rs</code> plus <code>lib.rs</code>) at once with plain
+      <code>cargo test</code>.
+    </li>
+    <li>Fix each file until it's green, then move on to the lesson's domain-tied task below it — that's the entire warm-up.</li>
+  </ol>
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If two exercises would want the same filename under <code>src/bin/</code> (e.g. two sets both
+      happen to have a file that'd land as <code>errors1.rs</code>), rename one — the binary name
+      just needs to be unique within the crate, not identical to Rustlings' own filename.
+    </p>
+  </div>
+
+  <h2>rust-analyzer &amp; your editor</h2>
+  <p>
+    Whatever editor you use, install <a href="https://rust-analyzer.github.io/">rust-analyzer</a>
+    and wire it up as an LSP client — most modern editors either bundle Rust support or have a
+    one-line plugin/extension for it.
+  </p>
+  <table>
+    <thead><tr><th>Thing</th><th>What it gives you</th></tr></thead>
+    <tbody>
+      <tr><td>rust-analyzer (LSP)</td><td>Live diagnostics as you type, hover docs, go-to-definition/references, inline type hints, rename, code actions — the "glue" that talks to <code>rustc</code>/<code>cargo</code>/<code>clippy</code> for you.</td></tr>
+      <tr><td>editor LSP status command</td><td>Most editors expose some way to confirm rust-analyzer is actually attached to the current buffer (e.g. an "LSP info" command) — use it if diagnostics seem to have stopped updating.</td></tr>
+      <tr><td>editor health-check command</td><td>General editor health check — useful when something seems misconfigured.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Typical LSP keymaps in your editor</h3>
+  <p>
+    These apply to <em>any</em> language with an attached LSP client — nothing below is
+    Rust-only. Exact bindings vary by editor/config; this is the shape to look for.
+  </p>
+  <table>
+    <thead><tr><th>Key (typical)</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td><code>gd</code></td><td>Go to definition</td></tr>
+      <tr><td><code>gr</code></td><td>References</td></tr>
+      <tr><td><code>gI</code></td><td>Go to implementation</td></tr>
+      <tr><td><code>gy</code></td><td>Go to type definition</td></tr>
+      <tr><td><code>K</code></td><td>Hover</td></tr>
+      <tr><td><code>&lt;leader&gt;ca</code></td><td>Code action</td></tr>
+      <tr><td><code>&lt;leader&gt;cr</code></td><td>Rename</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Treesitter specifically</h3>
+  <p>
+    If your editor uses <code>tree-sitter</code>-based syntax highlighting, make sure the
+    <code>rust</code> (and <code>ron</code>, if you touch RON config files) parsers are
+    installed. Parser compilation needs the <code>tree-sitter</code> CLI as a separate binary
+    from <code>cc</code>/<code>gcc</code> — install it if a parser install fails with something
+    like <code>ENOENT ... 'tree-sitter'</code>.
+  </p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Known gotchas</span>
+    <p>
+      <strong>A brand-new <code>src/bin/&lt;name&gt;.rs</code> can show "this file is not
+      included anywhere in the module tree"</strong> right after you create it (exactly the
+      warm-up recipe above does, every lesson) — rust-analyzer builds its crate graph from
+      <code>cargo metadata</code> once at startup/last reload and doesn't always notice a new
+      binary target appearing after that; its fallback guess for an unrecognized loose
+      <code>.rs</code> file is "this must be a module of the nearest crate, reachable via
+      <code>mod</code>," which is what that message is actually describing. It's a stale-index
+      problem, not a real one: <code>cargo test --bin &lt;name&gt;</code> in a terminal already
+      works regardless, since Cargo itself (not rust-analyzer's cache) is what scans
+      <code>src/bin/</code>. Fix the warning by restarting the LSP client, or just close and
+      reopen the editor if you don't have that command bound.
+    </p>
+    <p>
+      <strong>clippy-on-save and format-on-save:</strong> most editor LSP setups can run
+      <code>clippy</code> instead of plain <code>cargo check</code> for diagnostics, and run
+      <code>rustfmt</code> automatically on save — check your editor's LSP/formatter config if
+      you want either behavior and it isn't already on.
+    </p>
+  </div>
+
+  <h2>jj (Jujutsu)</h2>
+  <table>
+    <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>jj st</code></td><td>Status — what's changed in the working copy (which is itself a commit in jj).</td></tr>
+      <tr><td><code>jj log</code></td><td>Show recent changes/history graph.</td></tr>
+      <tr><td><code>jj diff</code></td><td>Show the diff of the current change.</td></tr>
+      <tr><td><code>jj describe -m "..."</code></td><td>Set/replace the description of the current change.</td></tr>
+      <tr><td><code>jj new</code></td><td>Start a new (empty) change on top of the current one.</td></tr>
+      <tr><td><code>jj squash</code></td><td>Fold the current change into its parent.</td></tr>
+      <tr><td><code>jj split</code></td><td>Interactively split the current change into two.</td></tr>
+      <tr><td><code>jj undo</code></td><td>Undo the last jj operation — always safe, the universal escape hatch.</td></tr>
+      <tr><td><code>jj op log</code></td><td>Full operation history, for finding a state to restore to.</td></tr>
+      <tr><td><code>jj git push --bookmark &lt;name&gt;</code></td><td>Push a bookmark (jj's version of a branch) to the git remote.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">Recovery, always</span>
+    <p>
+      If any jj history operation goes wrong — bad squash, wrong rebase, accidental abandon —
+      reach for <code>jj undo</code> first, or <code>jj op log</code> +
+      <code>jj op restore &lt;op-id&gt;</code> for anything further back. Never
+      <code>rm -rf .jj</code>.
+    </p>
+  </div>
+
+  <h2>Project build commands</h2>
+  <p>
+    Real backend workspaces usually wrap the raw <code>cargo</code> commands above in a
+    <code>Makefile</code> or a CI job target, so contributors run one short command instead of
+    remembering flags. A typical wrapper might run <code>cargo fmt --check</code>,
+    <code>cargo clippy --workspace</code>, and <code>cargo test</code> (or a faster test runner)
+    in sequence — check your project's <code>Makefile</code> or CI config for the actual
+    equivalent before assuming plain <code>cargo test</code> is everything CI does.
+  </p>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If a command here doesn't behave the way this page says — versions drift, flags change —
+      say so. This page should get corrected, not quietly ignored.
+    </p>
+  </div>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="0001-rust-backend-map.html">← Concept map</a> ·
+    <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map →</a> ·
+    <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet →</a> ·
+    <a href="0005-rustlings-map.html">Rustlings map →</a>
+  </div>
+</footer>
+
+</body>
+</html>

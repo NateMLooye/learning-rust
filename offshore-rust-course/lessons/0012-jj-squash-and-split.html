@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 12: jj Squash &amp; Split</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 12</span>
+    <span>
+      <a href="0011-traits-and-conversions.html">← Lesson 11</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0013-generics-and-trait-bounds.html">Lesson 13 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 12: jj Squash &amp; Split</h1>
+  <p class="subtitle">Reshaping messy history into clean changes, after the fact instead of trying to get it perfect the first time.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Real work is never as clean as "one lesson, one change." You'll fix a typo in something you
+    already described, or describe one change that actually contains two unrelated things. Squash
+    and split are how you clean that up <em>after the fact</em>, instead of trying to get it
+    perfect the first time.
+  </p>
+
+  <h2>Today's tasks (in <code>rust-practice</code>)</h2>
+
+  <ol class="task-list">
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>cw</code> <span class="gloss">— change from the cursor to the end of the word</span></summary>
+        <div class="details-body">
+        <p>
+          Same <strong>c</strong>hange operator as <code>ci{</code>/<code>ci"</code>, different
+          text object: <code>cw</code> is <strong>c</strong>hange + <strong>w</strong>ord — it
+          changes from the cursor to the end of the current word, dropping you into insert mode.
+          Exactly the right tool for "a small doc-comment wording issue" below.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Make a change that should be two</span>
+      <p>
+        In one sitting, without describing in between, make two unrelated, real edits in the
+        <em>same file</em> — this is about jj, not new Rust, so both edits use code you already
+        have: fix a small doc-comment wording issue on an old function (e.g. tighten
+        <code>ready_count</code>'s doc comment from Lesson 5), <em>and</em> add one new
+        <code>#[test]</code> covering an edge case an existing function doesn't yet test (e.g. an
+        <code>AccessRun</code> with an empty <code>outcomes</code> list — <code>ready_count</code>
+        should return <code>0</code>). Run <code>cargo test</code> once to confirm the new test
+        passes before moving on, then run:
+      </p>
+      <pre><code>jj split</code></pre>
+      <p>
+        With no path given, <code>jj split</code> opens an interactive diff editor listing every
+        changed hunk in the file. Select only the doc-comment fix and leave the new test
+        unselected, then confirm. The hunks you selected become a new change; whatever you left
+        unselected stays behind in the change you started from. Run <code>jj log</code> to see the
+        two changes it produced, then <code>jj diff -r &lt;change-id&gt;</code> on each one to
+        confirm the doc-comment fix and the new test landed in different changes.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Make a change that should be one</span>
+      <p>
+        Describe a change, then realize you forgot something small and directly related (a missed
+        test case, a typo in the same function). Instead of describing a second unrelated-looking
+        change:
+      </p>
+      <pre><code>jj new
+# make the small follow-up edit
+jj squash</code></pre>
+      <p>
+        <code>jj squash</code> folds the current change into its parent, keeping the parent's
+        description. Run <code>jj log</code> and confirm the follow-up edit is no longer a
+        separate entry.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">Recovery, always</span>
+    <p>
+      Both operations are ordinary jj operations — <code>jj undo</code> reverts either one cleanly
+      if the split or squash didn't go the way you expected.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> You reshaped messy history into clean changes twice — once by splitting a mixed-together edit apart, once by folding a small follow-up into its rightful parent.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Review feedback on a real backend-service change almost always wants clean, logically
+      separated commits — "this is the fix, this is the test, these are unrelated and should be
+      their own change." Squash and split are how you get there without redoing work from
+      scratch.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      <a href="https://jj-vcs.github.io/jj/latest/">The Jujutsu tutorial</a>, sections on
+      <code>jj squash</code> and <code>jj split</code>. No Comprehensive Rust or Rustlings
+      equivalent — neither teaches a VCS.
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      The interactive diff editor for <code>jj split</code> (no paths given) has its own learning
+      curve — if the keybindings or UI aren't obvious, ask rather than guessing your way through
+      an unfamiliar TUI under time pressure.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> back to Rust — generics and trait bounds, tied to the kind of small,
+    genuinely useful generic one-liners a backend service accumulates once a few types need the
+    same small conversion or comparison logic.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0011-traits-and-conversions.html">← Lesson 11</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0013-generics-and-trait-bounds.html">Lesson 13 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2: Live Diagnostics &amp; A Signature You Choose</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 2</span>
+    <span>
+      <a href="0001-open-rust-with-feedback.html">← Lesson 1</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0003-your-first-jj-change.html">Lesson 3 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 2: Live Diagnostics &amp; A Signature You Choose</h1>
+  <p class="subtitle">Understand and verify rust-analyzer's real feedback as you type, then write a function from a description alone — signature and all, not just the body.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Lesson 1 got you syntax colors — that tells you <em>this looks like</em> a keyword. It says
+    nothing about whether your code is actually correct. rust-analyzer is what tells you
+    <em>this is wrong</em> while you're still typing, instead of finding out only when you run
+    <code>cargo build</code>. In a multi-crate backend workspace, that live feedback loop is the
+    difference between confidently editing a module like <code>access_service::eval</code> and
+    getting lost in it.
+  </p>
+
+  <h2>What rust-analyzer actually adds</h2>
+  <p>Beyond colors, once it's attached to a buffer you get, live, without saving:</p>
+  <ul>
+    <li><strong>Diagnostics</strong> — type errors, borrow-checker complaints, unused variables — inline, as you type.</li>
+    <li><strong>Hover</strong> — the type and doc-comment of whatever's under your cursor.</li>
+    <li><strong>Go to definition / references</strong> — jump to where something is defined, or find every place it's used.</li>
+    <li><strong>Code actions</strong> — quick fixes it can suggest and apply (e.g. adding a missing <code>use</code>).</li>
+    <li><strong>Rename</strong> — rename a symbol everywhere it's used, not just under your cursor.</li>
+  </ul>
+  <p>
+    It also runs <code>clippy</code> for you in the background (confirmed below), so lint warnings
+    show up as diagnostics too — you won't need to remember to run <code>cargo clippy</code>
+    separately most of the time.
+  </p>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing <code>max</code> below, get <code>if</code>-as-expression under your
+        fingers on its own, with no rust-analyzer verification steps mixed in. Copy just the
+        first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/03_if">03_if</a>
+        set, <code>if1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green — see
+        the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> if this is your first one. For more on the
+        mechanism than task 4 below covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch03-05-control-flow.html#using-if-in-a-let-statement">"Using
+        if in a let statement"</a> section explains exactly this.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of the <code>03_if</code> set
+        (<code>if2.rs</code> onward) is good additional reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Confirm rust-analyzer is attached to your editor</span>
+      <p>
+        Once Rust/rust-analyzer support is enabled (Lesson 1), your editor starts an
+        <code>rust-analyzer</code> LSP client automatically whenever you open a <code>.rs</code>
+        file inside a Cargo project — no per-project setup. rust-analyzer itself expects a real
+        binary on <code>$PATH</code>; confirm it's there:
+      </p>
+      <pre><code>rust-analyzer --version</code></pre>
+      <p>
+        If this command fails, install it via <code>rustup component add rust-analyzer</code>, or
+        your editor's Rust extension will complain on startup that it can't find the binary —
+        that error message points straight at the fix.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Verify LSP features and clippy-on-save — they're already wired</span>
+      <p>
+        Open <code>rust-practice/src/lib.rs</code> and check your editor's LSP status (in
+        Neovim, <code>:LspInfo</code>; in VS Code, the rust-analyzer status item). You
+        should see <code>rust-analyzer</code> listed as attached — no config edit needed to get
+        here. These features work right now for any attached LSP, editor-keybinding differences
+        aside:
+      </p>
+      <ul>
+        <li>Hover on the <code>add</code> function name — shows its signature.</li>
+        <li>Go-to-definition on a call to <code>add</code> — jumps to its definition.</li>
+        <li>Find references.</li>
+        <li>Code actions.</li>
+        <li>Rename.</li>
+      </ul>
+      <p>
+        Clippy-on-save is also worth turning on if it isn't already — most editor integrations
+        expose a "check on save" or "clippy on save" setting for rust-analyzer. Prove it to
+        yourself: temporarily add a line like <code>let _unused = 5;</code> to <code>lib.rs</code>
+        and save — you should see a clippy warning appear as a diagnostic, not just a compiler
+        one. Remove the line once you've seen it.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Verify format-on-save</span>
+      <p>
+        Most editor Rust setups can format on save by asking the LSP to format, which shells out
+        to <code>rustfmt</code> under the hood. Enable format-on-save if it isn't already, then
+        prove it: deliberately misformat a line in <code>lib.rs</code> (extra spaces around an
+        operator, a brace on its own line), save the file, and watch it snap back to canonical
+        style with no manual <code>cargo fmt</code> needed.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>%</code> / <code>o</code> <span class="gloss">— confirm the brace match, then open a line below to write the body</span></summary>
+        <div class="details-body">
+        <p>
+          <code>%</code> jumps the cursor to a brace/paren's match — not a mnemonic letter this
+          time, just a motion. While writing a two-branch <code>if</code>/<code>else</code>
+          expression, sitting on the opening <code>{</code> of either branch and hitting
+          <code>%</code> confirms exactly where it closes — handy before you've internalized the
+          shape by feel. <code>o</code> (mnemonic: <strong>o</strong>pen a line below) enters
+          insert mode on a fresh line, useful for writing <code>max</code> below the test without
+          manually splitting a line.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Write a function from a description alone</span>
+      <p>
+        One new fact, on top of last lesson's implicit-return rule: <strong><code>if</code> is an
+        expression in Rust</strong>, not just a statement. <code>if cond { X } else { Y }</code>
+        evaluates to <code>X</code> or <code>Y</code> — you can use it as a function's return value
+        directly, the same way the last line of a function is its return value.
+      </p>
+      <p>
+        This time you get a description and a test — no signature, no stub. That's deliberate
+        scaffold fading, not a stricter version of Lesson 1's exercise: designing a signature is
+        its own skill, separate from filling in a body, and this course starts asking for it early
+        and often from here on. The failing test below is still given to you first, before you
+        design anything against it:
+      </p>
+      <blockquote>
+        Write a function that picks the more conservative of two operating limits — e.g. two
+        wind-speed limits, in meters per second — by returning whichever value is lower.
+      </blockquote>
+      <pre><code>#[test]
+fn select_conservative_limit_returns_the_lower_value() {
+    assert_eq!(select_conservative_limit(12.5, 9.0), 9.0);
+    assert_eq!(select_conservative_limit(6.0, 14.0), 6.0);
+}</code></pre>
+      <p>
+        Add that test to <code>src/lib.rs</code>, then write
+        <code>fn select_conservative_limit(...)</code> above or below it yourself — parameter
+        types, return type, and body, all your call. (One scoping note, not a hint about the
+        logic: the test passes decimal literals, so the types should be a floating-point type,
+        not <code>i32</code> like last lesson's <code>add</code>.) Use
+        <code>rust-analyzer</code>'s hover and inline diagnostics from task 2 while you work —
+        that's what they're for.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: let the compiler catch a real mismatch</span>
+    <p>
+      Try writing <code>select_conservative_limit</code> with an <code>if</code>/<code>else</code>
+      where one branch ends with a semicolon and the other doesn't. Read what rust-analyzer
+      underlines before fixing it — this is the same "last expression, no semicolon" rule from
+      Lesson 1, just inside a branch instead of a whole function body.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> <code>cargo test select_conservative_limit_returns_the_lower_value</code> goes green from a function you designed end-to-end — nothing in this lesson told you what the signature should look like.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Every diagnostic, hover, and go-to-definition you just confirmed working is exactly what
+      you'll lean on reading real backend modules with dozens of types in play — files big enough
+      that you will not want to hold their types in your head unaided.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      <a href="https://rust-analyzer.github.io/manual.html">The rust-analyzer manual</a> for what
+      the server can do and how its settings work. For the <code>if</code>-as-expression rule:
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch03-05-control-flow.html#using-if-in-a-let-statement">"Using if in a let statement"</a>
+      section covers the same mechanism this lesson used inside a function return. Comprehensive
+      Rust's <a href="https://google.github.io/comprehensive-rust/control-flow-basics/if.html">"if Expressions"</a>
+      chapter is a direct match, runnable-slide version (see
+      <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/03_if">03_if</a>
+      exercise as task 1's warm-up above. For extra reps outside the domain exercises, Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/02_functions">02_functions</a>
+      and
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/22_clippy">22_clippy</a>
+      exercise sets isolate signature design and lint fixes respectively (see
+      <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If your editor's LSP status shows no clients attached, or hover does nothing, stop and
+      ask rather than pushing into the exercise without diagnostics working — that defeats the
+      point of this lesson.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> your practice crate is plain git with zero commits so far — Lesson 3
+    layers jj onto it, a good general practice for managing a sequence of edits, and has you
+    describe the real work from these first two lessons, in your own words.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0001-open-rust-with-feedback.html">← Lesson 1</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0003-your-first-jj-change.html">Lesson 3 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

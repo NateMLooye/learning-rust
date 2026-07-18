@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference: Vim Keybind Cheatsheet</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends</span>
+    <span>
+      <a href="../MISSION.md">Mission</a>
+      <a href="0001-rust-backend-map.html">Concept map</a>
+      <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map</a>
+      <a href="0005-rustlings-map.html">Rustlings map</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Reference: Vim Keybind Cheatsheet</h1>
+  <p class="subtitle">Not vim-from-zero — the motions and operators that actually pay off when stub-filling Rust and reading dense backend source.</p>
+
+  <p>
+    You already know the basics (movement, insert mode, saving). This page is scoped to what's
+    genuinely useful for <em>this</em> course's shape of work: replacing a single
+    <code>todo!()</code> with real logic, filling one <code>match</code> arm at a time, and
+    jumping around unfamiliar files without losing your place. Each lesson also has a small
+    <span class="vim-tag">Vim
+    reminder</span>-style dropdown tying one of these to that lesson's actual edit — this page is
+    the durable version to come back to. Every command below is a dropdown: the line always shown
+    is the command and a one-line gloss, click to expand the "where you'll actually use it" detail.
+  </p>
+
+  <h2>Undo &amp; redo — your safety net</h2>
+  <p>
+    Every exercise here means typing real logic yourself — filling in a body early on, sometimes
+    designing a signature or trait later — which means you will occasionally delete more than you
+    meant to. These two commands make that free to recover from — use them liberally instead of
+    second-guessing a <code>ci{</code> or <code>dap</code>.
+  </p>
+  <div class="cmd-list">
+    <details>
+      <summary><code>u</code> <span class="gloss">— undo the last change</span></summary>
+      <div class="details-body">
+        <p>
+          Repeatable — hit it again to keep undoing further back. Where you'll use it: any time an
+          edit didn't land the way you expected, before you start manually retyping to fix it.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>Ctrl-R</code> <span class="gloss">— redo (undo the undo)</span></summary>
+      <div class="details-body">
+        <p>
+          Steps back <em>forward</em> through the undo history. Where you'll use it: you pressed
+          <code>u</code> one too many times, or undid something to inspect the "before" state and
+          now want the edit back.
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <h2>Text objects &amp; editing operators — the actual point of this page</h2>
+  <p>
+    Rust code is far more delimiter-heavy than Python (braces, parens, generic angle brackets).
+    Vim's <strong>operator + text object</strong> combo is built exactly for this: an operator
+    (<code>c</code>hange, <code>d</code>elete, <code>y</code>ank) plus a text object
+    (<code>i</code>nner or <code>a</code>round something) targets precisely the text between a
+    pair of delimiters, without you counting characters or visually selecting.
+  </p>
+  <div class="cmd-list">
+    <details>
+      <summary><code>ciw</code> <span class="gloss">— change the word under the cursor</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>c</strong>hange <strong>i</strong>nner <strong>w</strong>ord — deletes the word
+          under the cursor and drops you into insert mode. Where you'll use it: renaming a
+          variable or parameter name in place.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>cw</code> <span class="gloss">— change from the cursor to the end of the word, not the word plus trailing space</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>c</strong>hange <strong>w</strong>ord — vim special-cases this one
+          (<code>:help cw</code>): unlike <code>dw</code>/<code>yw</code>, which also consume the
+          whitespace up to the start of the next word, <code>cw</code> stops at the end of the
+          current word when the cursor is on a non-blank character, behaving like <code>ce</code>.
+          It's an exception to the general operator+text-object grammar below, not a strict
+          instance of it. Where you'll use it: fixing a typo partway through an identifier or a
+          doc-comment word without retyping its start.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>ci(</code> / <code>ci)</code> <span class="gloss">— change everything inside the nearest parens</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>c</strong>hange <strong>i</strong>nner <strong>(</strong>parens<strong>)</strong>
+          — delimiters untouched. Where you'll use it: rewriting a function's argument list, or
+          the inside of a call like <code>add(2, 3)</code>.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>ci{</code> / <code>ci}</code> <span class="gloss">— change everything inside the nearest braces</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>c</strong>hange <strong>i</strong>nner <strong>{</strong>braces<strong>}</strong>
+          — the single most useful one here. Where you'll use it: replacing a whole function body
+          (<code>todo!()</code> and everything else) or one <code>match</code> arm's block in one
+          motion.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>ci&lt;</code> / <code>ci&gt;</code> <span class="gloss">— change everything inside the nearest angle brackets</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>c</strong>hange <strong>i</strong>nner <strong>&lt;</strong>angle
+          brackets<strong>&gt;</strong>. Where you'll use it: generic parameter lists
+          (<code>&lt;T: Display&gt;</code>) and lifetime parameter lists (<code>&lt;'api&gt;</code>)
+          are both angle-bracket text objects — rewrite the bound or rename the lifetime without
+          retyping the brackets.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>ci"</code> <span class="gloss">— change the contents of the nearest quoted string</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>c</strong>hange <strong>i</strong>nner <strong>"</strong>quotes<strong>"</strong>
+          — quotes untouched. Where you'll use it: editing a string literal (test fixture data, an
+          error message) without retyping the quotes.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>di{</code> / <code>da{</code> <span class="gloss">— delete inside/around the nearest braces</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>d</strong>elete instead of change — <code>i</code> leaves the braces,
+          <code>a</code> removes them too. Where you'll use it: deleting a whole match arm's block
+          including or excluding the braces.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>yi(</code> <span class="gloss">— yank (copy) everything inside the nearest parens</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>y</strong>ank <strong>i</strong>nner <strong>(</strong>parens<strong>)</strong> —
+          without entering insert mode. Where you'll use it: copying an argument list to reuse
+          elsewhere.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>yap</code> / <code>dap</code> <span class="gloss">— yank/delete around the whole paragraph (function)</span></summary>
+      <div class="details-body">
+        <p>
+          <strong>y</strong>ank/<strong>d</strong>elete <strong>a</strong>round
+          <strong>p</strong>aragraph — blank lines act as paragraph boundaries in Rust, so this
+          targets a whole function at once. Where you'll use it: moving an entire function to a
+          new file during a module-split refactor: <code>yap</code> in the old file, switch
+          buffers, <code>p</code> to paste, <code>dap</code> back in the original once it's safely
+          moved.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>.</code> <span class="gloss">— repeat the last change exactly</span></summary>
+      <div class="details-body">
+        <p>
+          Not a mnemonic — just the repeat-last-change symbol. Where you'll use it: filled one
+          <code>match</code> arm with <code>ci{...&lt;Esc&gt;</code>? Move to the next arm and hit
+          <code>.</code> for the same shape of edit.
+        </p>
+      </div>
+    </details>
+  </div>
+  <p>
+    Reading the pattern: every command above except the last is <strong>operator</strong>
+    (<code>c</code>/<code>d</code>/<code>y</code>) + <strong>scope</strong>
+    (<code>i</code>nner or <code>a</code>round) + <strong>text object</strong>
+    (a delimiter pair, a word, or <code>p</code>aragraph). Once that grammar clicks, you can guess
+    a command you've never used before — <code>di"</code>, <code>ya(</code>,
+    <code>ci[</code> — instead of memorizing each one as an unrelated fact.
+  </p>
+
+  <h2>Jumps &amp; search</h2>
+  <div class="cmd-list">
+    <details>
+      <summary><code>%</code> <span class="gloss">— jump to the matching bracket/paren/brace</span></summary>
+      <div class="details-body">
+        <p>
+          Bouncing between an opening <code>{</code> and its closing <code>}</code> in a nested
+          <code>match</code> or a multi-field struct-shaped enum variant (Lesson 11's
+          <code>Parse { ... }</code>) — genuinely more load-bearing in Rust than it ever was in
+          Python.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>*</code> / <code>#</code> <span class="gloss">— search forward/backward for the word under the cursor</span></summary>
+      <div class="details-body">
+        <p>
+          Whole-word search. Where you'll use it: "where else in this file is <code>expr</code>
+          used" — the vim-native version of what <code>gr</code> (LSP references) does across
+          files.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>{</code> / <code>}</code> <span class="gloss">— jump to the previous/next blank line</span></summary>
+      <div class="details-body">
+        <p>
+          Paragraph motion. Blank lines separate functions in idiomatic Rust, so this is a fast
+          way to hop from one function/impl block to the next in a long backend source file.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>gg</code> / <code>G</code> <span class="gloss">— jump to the first/last line of the file</span></summary>
+      <div class="details-body">
+        <p>
+          Where you'll use it: getting to the top of a field-study file fast, or to the bottom to
+          see the last <code>impl</code> block.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>Ctrl-o</code> / <code>Ctrl-i</code> <span class="gloss">— jump backward/forward through the jumplist</span></summary>
+      <div class="details-body">
+        <p>
+          Where you'll use it: after <code>gd</code> (go to definition) jumps you into a different
+          file or a faraway line, <code>Ctrl-o</code> gets you straight back to where you were —
+          don't scroll back by hand.
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <h2>Editing efficiency for stub-fill work</h2>
+  <div class="cmd-list">
+    <details>
+      <summary><code>o</code> / <code>O</code> <span class="gloss">— open a new line below/above and enter insert mode</span></summary>
+      <div class="details-body">
+        <p>
+          Where you'll use it: adding a new match arm or a new field without splitting an existing
+          line by hand.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>Ctrl-v</code> <span class="gloss">— visual block mode, select a rectangular column of text</span></summary>
+      <div class="details-body">
+        <p>
+          Where you'll use it: aligning several <code>match</code> arms, or adding the same prefix
+          (e.g. <code>pub </code>) to a column of lines at once.
+        </p>
+      </div>
+    </details>
+    <details>
+      <summary><code>&gt;&gt;</code> / <code>&lt;&lt;</code> <span class="gloss">— indent/outdent the current line one shiftwidth</span></summary>
+      <div class="details-body">
+        <p>
+          Rarely needed here — format-on-save (Lesson 2) handles real indentation — but useful
+          mid-edit before a save.
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <h2>LSP-layer keymaps (not vim-native, but live here too)</h2>
+  <p>
+    These are bound by rust-analyzer via your editor's LSP client, not vim itself — the full
+    table with setup details lives in the
+    <a href="0002-rust-tooling-cheatsheet.html">tooling cheatsheet</a>. Listed here only because
+    they compose directly with the motions above: <code>gd</code> jumps to a definition, then
+    <code>ci{</code> can rewrite what you find there, then <code>Ctrl-o</code> brings you back.
+  </p>
+  <table>
+    <thead><tr><th>Key</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td><code>gd</code></td><td>Go to definition</td></tr>
+      <tr><td><code>gr</code></td><td>References (find every use)</td></tr>
+      <tr><td><code>K</code></td><td>Hover (type + doc-comment)</td></tr>
+      <tr><td><code>&lt;leader&gt;ca</code></td><td>Code action</td></tr>
+      <tr><td><code>&lt;leader&gt;cr</code></td><td>Rename symbol everywhere</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout--vim">
+    <span class="callout-label">The one habit worth building deliberately</span>
+    <p>
+      When you catch yourself about to arrow-key or hjkl-repeat to a delimiter, stop and ask
+      "is there a text object for this?" almost always yes. The payoff compounds specifically
+      in Rust because of how much of the language's structure lives inside
+      <code>{}</code>/<code>()</code>/<code>&lt;&gt;</code> pairs — far more than typical Python.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      <a href="https://vimhelp.org/motion.txt.html">Vim's own <code>:help motion.txt</code></a>
+      (mirrored at vimhelp.org) — section 6, "Text object selection," is the canonical reference
+      for every <code>ci(</code>/<code>di{</code>/<code>yaw</code>-style command above. Also
+      reachable without leaving the editor: <code>:help text-objects</code>.
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If a motion here doesn't do what this page says on your setup (custom remaps, a plugin
+      overriding a default), say so — this page should track what's actually true for your
+      config, not the vim defaults in the abstract.
+    </p>
+  </div>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map</a> ·
+    <a href="0005-rustlings-map.html">Rustlings map</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 18: Cargo Workspaces</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 18</span>
+    <span>
+      <a href="0017-modules-and-visibility.html">← Lesson 17</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 18: Cargo Workspaces</h1>
+  <p class="subtitle">One level up from Lesson 17's module split: splitting one crate into many, and knowing exactly which ones a given Cargo command actually touches.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Lesson 17 split one crate's code into files. A real backend takes the same underlying
+    pressure — "this grew too large to be one thing" — one level further: it's not one crate with
+    many modules, it's <strong>several separate crates in one workspace</strong> (per the mission
+    glossary: <code>access-service</code>, <code>telemetry-core</code>, <code>test-support</code>,
+    and more as a service grows). Knowing what a workspace actually is, and which command builds
+    which subset of it, is the difference between <code>cargo build</code> quietly doing far less
+    than you assumed and knowing exactly what just happened.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A backend workspace's root <code>Cargo.toml</code> might look like this (often preceded by a
+    <code>[workspace.package]</code> section with shared metadata, so the <code>[workspace]</code>
+    table itself sits a little further down than line one):
+  </p>
+  <pre><code>[workspace]
+default-members = ["crates/access-service"]
+members = ["crates/*"]
+resolver = "3"</code></pre>
+  <p>
+    One workspace, several member crates (<code>access-service</code>, <code>telemetry-core</code>,
+    <code>test-support</code>, and others as the service grows) sharing one
+    <code>Cargo.lock</code> and one <code>target/</code> build directory. Notice: there's no
+    <code>[package]</code> section anywhere in this file — this root <code>Cargo.toml</code> only
+    ever defines the workspace itself, never a crate of its own (a <em>virtual workspace</em>, in
+    Cargo's terms).
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong>A workspace</strong> groups multiple actual crates (each with their own
+      <code>Cargo.toml</code>) so they share dependency resolution and a build cache, without being
+      one monolithic crate. A backend like this uses that to keep <code>access-service</code>,
+      <code>telemetry-core</code>, etc. as independently buildable, independently testable units.
+    </li>
+    <li>
+      <strong><code>default-members</code> is not "all members."</strong> When you run a
+      package-selecting command (<code>build</code>, <code>check</code>, <code>test</code>,
+      <code>clippy</code>) from the workspace root with neither <code>-p</code>/<code>--package</code>
+      nor <code>--workspace</code>, Cargo operates on <code>default-members</code> only — in the
+      field study above that's just <code>crates/access-service</code>. A bare <code>cargo build</code>
+      at that workspace's root does <strong>not</strong> build every crate; it builds one.
+    </li>
+    <li>
+      <strong><code>--workspace</code></strong> forces the command onto every member, ignoring
+      <code>default-members</code> entirely. This is what actually builds/checks/tests every crate
+      in the workspace at once.
+    </li>
+    <li>
+      <strong><code>-p &lt;package&gt;</code></strong> (short for <code>--package</code>) targets
+      exactly the named crate, regardless of <code>default-members</code> — and works from
+      anywhere inside the workspace, not just the root.
+    </li>
+  </ul>
+
+  <h2>Today's task</h2>
+
+  <ol class="task-list">
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>gg</code> / <code>G</code> <span class="gloss">— jump to the first/last line of a file you're skimming, not editing</span></summary>
+        <div class="details-body">
+        <p>
+          This task is mostly reading small <code>Cargo.toml</code> files and comparing command
+          output, not editing Rust. <code>gg</code>/<code>G</code> (top/bottom of file) are the
+          two jumps you'll actually want, moving fast between a crate's <code>[package]</code> name
+          and the root's <code>[workspace]</code> table without scrolling by hand.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Predict, then verify, what three build commands each touch</span>
+      <p>
+        Build a miniature two-crate workspace that mirrors the field study's own shape — small
+        enough for immediate, offline feedback, no external registry access needed. From your
+        projects directory (outside <code>rust-practice</code>, which is already a single crate,
+        not a workspace):
+      </p>
+      <pre><code>mkdir -p workspace-demo/crates/access-service/src
+mkdir -p workspace-demo/crates/telemetry-core/src
+cd workspace-demo</code></pre>
+      <p>Root <code>Cargo.toml</code> — the same three keys as the field study's, on purpose:</p>
+      <pre><code>[workspace]
+members = ["crates/*"]
+default-members = ["crates/access-service"]
+resolver = "3"</code></pre>
+      <p><code>crates/access-service/Cargo.toml</code>:</p>
+      <pre><code>[package]
+name = "access-service"
+version = "0.1.0"
+edition = "2024"</code></pre>
+      <p>
+        <code>crates/access-service/src/lib.rs</code>: <code>pub fn ping() -&gt; &amp;'static str { "access-service" }</code>.
+        Then the same shape for <code>telemetry-core</code> — <code>crates/telemetry-core/Cargo.toml</code>
+        with <code>name = "telemetry-core"</code>, and <code>crates/telemetry-core/src/lib.rs</code>
+        returning <code>"telemetry-core"</code> instead.
+      </p>
+      <p>
+        <strong>Before running each command below, write down which crate(s) you think it will
+        compile.</strong> Then run it and check <code>ls target/debug/*.d</code> — one
+        <code>.d</code> file per crate actually compiled, immediate ground truth:
+      </p>
+      <pre><code>cargo build
+ls target/debug/*.d
+
+cargo build --workspace
+ls target/debug/*.d
+
+cargo build -p telemetry-core
+ls target/debug/*.d</code></pre>
+      <p>
+        The first should show only <code>access-service</code>'s output; the second adds
+        <code>telemetry-core</code>; the third works even freshly (try it after
+        <code>rm -rf target</code>) and touches only <code>telemetry-core</code>, never consulting
+        <code>default-members</code> at all.
+      </p>
+    </li>
+  </ol>
+
+  <p><span class="win-badge">Tangible win</span> Three commands, three different, correctly-predicted sets of compiled crates — not a claim you took on faith, but one you watched <code>target/debug/</code> confirm each time.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      A plain <code>cargo build</code> from a real backend workspace's root typically only builds
+      its default crate — the same <code>default-members</code> behavior your demo just showed, at
+      real scale. That's deliberate: most local iteration only needs the one crate you're actually
+      changing. Exercising the full workspace is what <code>cargo build --workspace</code> (and
+      whatever a given team's CI pipeline runs) is actually for. If you already have access to a
+      larger multi-crate workspace, try <code>cargo build -p &lt;some-crate&gt;</code> there and
+      confirm it compiles just that one crate — but this step is optional and not required to
+      finish this lesson.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Cargo Book's
+      <a href="https://doc.rust-lang.org/cargo/reference/workspaces.html">"Workspaces"</a>
+      reference — read the "Package selection" and "The <code>default-members</code> field"
+      sections specifically, they're exactly what this lesson's task exercises. Comprehensive
+      Rust and Rustlings don't cover Cargo workspaces specifically (see
+      <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a> and
+      <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--checkpoint">
+    <span class="callout-label">Retrieval checkpoint — Lessons 16-17, closed-book, ~2 min</span>
+    <p>
+      Answer from memory before opening the reveal:
+    </p>
+    <ol>
+      <li>When you clone an <code>Arc</code>, what actually gets copied — the underlying data, or something else?</li>
+      <li>What does <code>mod foo;</code> in <code>lib.rs</code> tell Rust to go look for?</li>
+    </ol>
+    <details>
+      <summary>Reveal the answers</summary>
+      <div class="details-body">
+        <p>
+          <strong>1.</strong> Not the inner data — cloning an <code>Arc</code> increments a
+          reference count and hands back a pointer to the same value. The wrapper is what's
+          cloned, not the thing inside (Lesson 16).
+        </p>
+        <p>
+          <strong>2.</strong> <code>src/foo.rs</code>, or <code>src/foo/mod.rs</code> for the
+          directory form (Lesson 17).
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If <code>default-members</code> vs. <code>--workspace</code> vs. <code>-p</code> still feels
+      like three ways to say the same thing after running all three, ask — the distinction is
+      small in syntax but real in consequence (compiling 1 crate vs. many is a very different
+      wait), and it's worth being certain rather than guessing which one CI or a teammate meant.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> this closes the foundation phase (Lessons 1-18) — the core language,
+    interleaved jj practice, and one structural refactor. What comes next (async/Tokio, jj
+    bookmarks and a real <code>jj git push</code>, explicit testing idioms) builds toward the
+    actual goal: a real, small, tested change to a production backend service, not a pre-written
+    guess about what that change will be.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0017-modules-and-visibility.html">← Lesson 17</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+  </div>
+</footer>
+
+</body>
+</html>

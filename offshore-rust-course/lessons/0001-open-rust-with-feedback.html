@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1: Toolchain Anatomy, Highlighting, &amp; Your First Function</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 1</span>
+    <span>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0002-live-diagnostics-and-your-signature.html">Lesson 2 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 1: Toolchain Anatomy, Highlighting, &amp; Your First Function</h1>
+  <p class="subtitle">Understand the five pieces of the Rust toolchain, get nvim to recognize Rust syntax, then write one real line of Rust yourself.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    You're going to spend real time reading and writing Rust for an offshore access backend —
+    services built from the crates <code>access-service</code>, <code>telemetry-core</code>, and
+    <code>test-support</code>. Every minute you spend fighting your editor is a minute not spent
+    learning Rust or that backend. Before writing a single line of Rust, it's worth knowing what
+    each tool in the chain actually does — so when something breaks later, you know which piece to
+    blame.
+  </p>
+
+  <h2>The toolchain, five pieces</h2>
+  <p>People new to Rust often lump these together. They are five separate programs with five separate jobs:</p>
+  <ul>
+    <li><strong><code>rustc</code></strong> — the compiler. Turns <code>.rs</code> files into machine code. You rarely invoke it directly.</li>
+    <li><strong><code>cargo</code></strong> — the build tool and package manager. The thing you actually type commands into (<code>cargo build</code>, <code>cargo test</code>, ...). Cargo calls <code>rustc</code> for you.</li>
+    <li><strong><code>rustfmt</code></strong> — the formatter. Rewrites your code to a canonical style. No debates about tabs vs. spaces.</li>
+    <li><strong><code>clippy</code></strong> — the linter. Catches non-idiomatic or subtly wrong patterns that compile fine but aren't the "Rust way."</li>
+    <li><strong>rust-analyzer</strong> — the language server (LSP). The glue that talks to the other four on your behalf and reports back to your editor: live diagnostics, hover docs, go-to-definition, inline type hints.</li>
+  </ul>
+  <p>
+    In Python terms: <code>rustc</code> ≈ the interpreter, <code>cargo</code> ≈ <code>pip</code> +
+    <code>venv</code> + a task runner combined, <code>rustfmt</code> ≈ <code>black</code>,
+    <code>clippy</code> ≈ <code>pylint</code>/<code>ruff</code>, rust-analyzer ≈ pyright/pylance —
+    except in Rust these five are far more tightly integrated, because the compiler's type
+    information is rich enough for the LSP to lean on directly.
+  </p>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Confirm the toolchain is actually there</span>
+      <p>Run each of these and confirm you get a version string back, not a "command not found":</p>
+      <pre><code>rustc --version
+cargo --version
+rustfmt --version
+cargo clippy --version</code></pre>
+      <p>
+        You should see a version string for all four. This is a quick confirmation, not an
+        install step — if any command isn't found, install the toolchain via
+        <a href="https://rustup.rs/">rustup</a> first.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Create the practice crate</span>
+      <p>This is where every future lesson's exercises will live:</p>
+      <pre><code>cd into your projects directory
+cargo new --lib rust-practice
+cd rust-practice
+cargo test</code></pre>
+      <p>
+        <code>cargo test</code> should print one passing test — <code>cargo new</code> scaffolds
+        a placeholder <code>it_works</code> test by default. That's your first green run, before
+        you've written a line of Rust yourself.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Open <code>src/lib.rs</code> in your editor, cold</span>
+      <p>
+        Open the file in your editor right now, before changing any config. Look at the syntax
+        coloring (or lack of it) and note what you see. This is expected — nothing Rust-specific
+        is wired up yet — but it's worth seeing the "before" state once.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Enable Rust/rust-analyzer support in your editor</span>
+      <p>
+        Rust syntax highlighting and language-server support aren't on by default in most
+        editors — enable them once, and every lesson afterward benefits. Most editors offer this
+        through a single built-in setting or a rust-analyzer plugin that wires up treesitter
+        highlighting and the rust-analyzer LSP together. One line of config is usually enough to
+        turn both on.
+      </p>
+      <p>
+        Restart your editor and open <code>rust-practice/src/lib.rs</code>. Keywords,
+        strings, and the <code>#[test]</code> attribute should already render in distinct colors.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>ci{</code> <span class="gloss">— change everything inside the nearest braces</span></summary>
+        <div class="details-body">
+        <p>
+          Vim's editing commands are built from an <strong>operator</strong> plus a
+          <strong>text object</strong>, and reading the letters literally tells you what a command
+          does. <code>ci{</code> is <strong>c</strong>hange + <strong>i</strong>nner + the nearest
+          <code>{ }</code> pair — "change whatever's inside these braces." With the cursor anywhere
+          inside <code>add</code>'s body, <code>ci{</code> clears <code>todo!()</code> and drops
+          you straight into insert mode, ready to type the real expression — no manual selecting
+          or deleting first. This same <em>operator + text-object</em> pattern reappears constantly
+          (<code>ci(</code>, <code>ci"</code>, <code>di{</code>, ...) — once the letters click here,
+          the rest follow the same logic. See
+          <a href="../reference/0004-vim-keybind-cheatsheet.html"><code>../reference/0004-vim-keybind-cheatsheet.html</code></a> for the full set.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Write the body yourself — no copy-paste</span>
+      <p>Two Rust facts, and that's all the theory you get before you write real logic:</p>
+      <ul>
+        <li>A function is <code>fn name(param: Type, ...) -&gt; ReturnType { ... }</code>.</li>
+        <li>
+          The <strong>last expression in a block, with no semicolon, is what the function
+          returns</strong> — there's no <code>return</code> keyword required. This is different
+          from Python. Add a semicolon and the expression's value is thrown away instead
+          (it becomes a statement, and the block's type becomes <code>()</code> — "nothing" — instead
+          of the type you meant to return).
+        </li>
+      </ul>
+      <p>
+        <strong>Now do a Rustlings rep on just that mechanic</strong>, isolated from the domain
+        code and from the exercise below — the crate you created in task 2 is exactly where it lives.
+        From inside <code>rust-practice</code>:
+      </p>
+      <pre><code>curl -s -o src/bin/functions1.rs \
+  https://raw.githubusercontent.com/rust-lang/rustlings/main/exercises/02_functions/functions1.rs</code></pre>
+      <p>
+        Open <code>src/bin/functions1.rs</code>, fix it, then run:
+      </p>
+      <pre><code>cargo test --bin functions1</code></pre>
+      <p>
+        Green means this warm-up is done — that's the one deliberately-picked file for this
+        lesson. (Full explanation of why the wiring works, and other ways to fetch a file, in the
+        tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> — this is the pattern every later lesson's
+        Rustlings step reuses without re-explaining it.) For more on how a function is defined
+        than the two facts above cover, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch03-03-how-functions-work.html">"Functions"</a>
+        section goes deeper.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> <code>functions2.rs</code> through
+        <code>functions5.rs</code> (same set, same URL pattern, number swapped) cover the same
+        mechanic from a few more angles. Good reps if you want them — not required to move on.
+      </p>
+      <p>
+        <strong>Now, the actual lesson exercise.</strong> In
+        <code>rust-practice/src/lib.rs</code>, add this exactly as shown — this
+        part is scaffold, not the exercise:
+      </p>
+      <pre><code>/// Returns the sum of `a` and `b`.
+fn add(a: i32, b: i32) -> i32 {
+    todo!()
+}
+
+#[test]
+fn add_returns_the_sum() {
+    assert_eq!(add(2, 3), 5);
+}</code></pre>
+      <p>
+        Run <code>cargo test add_returns_the_sum</code>. It fails — <code>todo!()</code> compiles
+        fine but panics the moment it actually runs. That panic <em>is</em> your starting point, not
+        a mistake.
+      </p>
+      <p>
+        <strong>Now replace <code>todo!()</code> yourself</strong> with an expression that returns
+        the sum of <code>a</code> and <code>b</code>, using the implicit-return rule above — no
+        <code>return</code> keyword, no trailing semicolon on that line. Re-run the test until it's
+        green.
+      </p>
+    </li>
+  </ol>
+
+  <p><span class="win-badge">Tangible win</span> Rust keywords, strings, and the <code>#[test]</code> attribute render in distinct colors — and you can confirm it's <em>actually</em> treesitter, not a lucky guess, by querying its internal state directly: <code>:lua print(vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()] ~= nil)</code> should print <code>true</code>. That habit — verify a tool's actual internal state instead of trusting how the screen looks — is worth keeping for every tool you set up in this course.</p>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: break it on purpose (task 5)</span>
+    <p>
+      Once green, add a semicolon after your expression and run the test again. Read the compiler
+      error (it will mention <code>()</code> and a type mismatch) before removing the semicolon to
+        fix it. This exact error is one of the most common first-week Rust stumbles — better to meet
+        it deliberately now than be confused by it later in a real backend.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> A red <code>cargo test</code> (from <code>todo!()</code> panicking) turned green from one line you wrote yourself, with no code copied from this lesson. That one line is the entire mission's teaching method in miniature: theory and a failing test are given, the logic is always yours.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      The backend you build toward is a multi-crate Cargo workspace —
+      <code>access-service</code>, <code>telemetry-core</code>, and <code>test-support</code> —
+      same shape as your practice crate, just generalized to more files. Every file you'll
+      eventually open there is a <code>.rs</code> file just like this one — the highlighting,
+      diagnostics, and LSP features you're setting up now are exactly what you'll rely on when
+      reading a real module for the first time.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      For more on what Cargo is doing under the hood: The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch01-03-hello-cargo.html">"Hello, Cargo!"</a>
+      section, and The Cargo Book's
+      <a href="https://doc.rust-lang.org/cargo/getting-started/first-steps.html">"First Steps with Cargo"</a>.
+      For more on treesitter itself, the
+      <a href="https://github.com/nvim-treesitter/nvim-treesitter#readme">nvim-treesitter README</a>
+      is the source of truth for its current API — more reliable than blog posts and tutorials
+      written before its most recent rewrite.
+      See <a href="../reference/0002-rust-tooling-cheatsheet.html"><code>../reference/0002-rust-tooling-cheatsheet.html</code></a> for the full command reference.
+      For a second angle on the toolchain itself, Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/hello-world.html">"Hello, World"</a>
+      and <a href="https://google.github.io/comprehensive-rust/cargo.html">"Using Cargo"</a>
+      chapters cover the same ground with runnable slides (see
+      <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/02_functions">02_functions</a>
+      exercise as part of task 5's warm-up above. For extra reps on the absolute basics (variable
+      bindings, <code>mut</code>, shadowing) outside the domain exercises, Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/00_intro">00_intro</a>
+      and
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/01_variables">01_variables</a>
+      exercises are the same fix-it-until-it-compiles shape this course uses (see
+      <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If colors still don't change after restarting nvim, run <code>:checkhealth nvim-treesitter</code>
+      and <code>:TSLog</code> for diagnostics, and if those don't make it obvious — stop and ask
+      rather than guessing further. Same for step 1: if any command doesn't print what this lesson
+      says it should, don't push forward on a broken foundation.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> <a href="0002-live-diagnostics-and-your-signature.html">Lesson 2</a>
+    wires up rust-analyzer itself (live diagnostics, not just syntax color) and has you write a
+    second function with even less scaffold — the doc-comment and test are given, but you design
+    the function signature yourself, not just the body.
+  </p>
+
+</main>
+
+  <footer class="course-footer">
+  <div class="footer-inner">
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0002-live-diagnostics-and-your-signature.html">Lesson 2 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 10: Result, Option, and the ? Operator</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 10</span>
+    <span>
+      <a href="0009-collections-and-strings.html">← Lesson 9</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0011-traits-and-conversions.html">Lesson 11 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 10: Result, Option, and the <code>?</code> Operator</h1>
+  <p class="subtitle">No exceptions in Rust — failure is a value, and the compiler makes you handle it.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Python signals failure by raising an exception that unwinds the stack until something catches
+    it — or nothing does, and the program crashes. Rust has no exceptions for ordinary errors.
+    A function that might fail returns <code>Result&lt;T, E&gt;</code>, and the compiler forces you
+    to acknowledge that every time you call it. This is a real design difference, not just syntax.
+    Lesson 9's <code>HashMap::get</code> already returned an <code>Option</code> without
+    stopping to explain it — this lesson covers <code>Option</code> properly, alongside its
+    error-carrying sibling <code>Result</code>.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A service like this might resolve one operating parameter into a typed value, where the
+    parameter can legitimately be absent <em>and</em> the raw value can be malformed:
+  </p>
+  <pre><code>pub fn resolve_heave_limit(
+    parameters: &amp;HashMap&lt;String, String&gt;,
+    site: &amp;AssetId,
+) -&gt; Result&lt;Option&lt;f64&gt;&gt; {
+    let key = format!("heave_limit.{site}");
+
+    let Some(raw) = parameters.get(&amp;key) else {
+        return Ok(None);
+    };
+
+    let limit: f64 = raw
+        .trim()
+        .parse()
+        .context("invalid heave_limit value")?;
+
+    Ok(Some(limit))
+}</code></pre>
+  <p>
+    Two different kinds of "no answer" live in this one signature: <code>None</code> means the
+    parameter simply wasn't set for this site (not an error), while the <code>?</code> after
+    <code>.context(...)</code> means the parameter <em>was</em> set but couldn't be parsed as a
+    number (a real error, with a message attached). Without <code>?</code>, that last line would
+    need a manual <code>match</code> to propagate the parse failure.
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong><code>Result&lt;T, E&gt;</code></strong> is an enum with two variants:
+      <code>Ok(T)</code> (success, holding the value) and <code>Err(E)</code> (failure, holding the
+      error). It's the same enum-with-data mechanism from Lesson 4 — <code>Result</code> isn't
+      special syntax, it's a real enum you could have written yourself.
+    </li>
+    <li>
+      <strong><code>Option&lt;T&gt;</code></strong> is Rust's answer to "might be absent" —
+      <code>Some(T)</code> or <code>None</code>. Python uses <code>None</code> for both "absent"
+      and, informally, "something went wrong." Rust splits these into two distinct types on
+      purpose: a function returning <code>Option&lt;User&gt;</code> means "might not find one";
+      a function returning <code>Result&lt;User, Error&gt;</code> means "might fail, and here's why."
+    </li>
+    <li>
+      <strong>The <code>?</code> operator</strong> unwraps an <code>Ok</code>/<code>Some</code> and
+      keeps going, or immediately returns the <code>Err</code>/<code>None</code> from the whole
+      function. It only works inside a function whose own return type is compatible.
+    </li>
+    <li>
+      <strong><code>let ... else { ... }</code></strong> (the <code>let-else</code> in the
+      snippet above) is a pattern-match that either succeeds and binds the value, or falls
+      through the <code>else</code> branch — here, that branch returns <code>Ok(None)</code>
+      immediately, short-circuiting the rest of the function. It's a clean way to say "handle the
+      absent case up front, then move on assuming the value is there."
+    </li>
+    <li>
+      <strong><code>anyhow</code> vs <code>thiserror</code>:</strong> a hand-written enum like
+      Lesson 4's <code>AccessOutcome</code> is the shape you reach for with <code>thiserror</code>
+      when callers need to react differently to different failures — specific, matchable
+      variants. <code>anyhow::Result</code> (used here) is for application code that just needs
+      to report <em>a</em> good error message, without callers needing to match on error type.
+      <code>.context("...")</code> attaches a human-readable note to whatever error occurred,
+      without changing its type.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing <code>parse_heave_limit</code> below, practice <code>Result</code> and
+        <code>?</code> on their own, with no <code>anyhow</code>/<code>.context()</code> layered
+        on top yet. Copy just the first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/13_error_handling">13_error_handling</a>
+        set, <code>errors1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green —
+        see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more depth than the
+        theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch09-00-error-handling.html">chapter 9, "Error
+        Handling"</a> covers <code>Result</code>, <code>Option</code>, and <code>?</code> in full.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>13_error_handling</code>
+        (<code>errors2.rs</code> onward) is good additional reps, not required for this lesson.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Add anyhow as a real dependency</span>
+      <p>From inside <code>rust-practice</code>:</p>
+      <pre><code>cargo add anyhow</code></pre>
+      <p>
+        This edits your <code>Cargo.toml</code> for you and fetches the crate — the same dependency
+        the field study's <code>resolve_heave_limit</code> uses for this exact pattern.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>ci"</code> <span class="gloss">— change the contents of the nearest quoted string</span></summary>
+        <div class="details-body">
+        <p>
+          Same <strong>c</strong>hange + <strong>i</strong>nner pattern as Lesson 1's
+          <code>ci{</code>, applied to quotes instead of braces: <code>ci"</code> changes the
+          contents of the nearest quoted string, leaving the quote marks themselves in place —
+          the fastest way to write your own <code>.context("...")</code> message without
+          retyping the surrounding quotes.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Write a function using <code>?</code> and <code>.context()</code></span>
+      <p>Add this scaffold to <code>src/lib.rs</code>:</p>
+      <pre><code>use anyhow::{Context, Result};
+
+/// Parses a raw heave-limit string into a floating-point value.
+fn parse_heave_limit(raw: &amp;str) -&gt; Result&lt;f64&gt; {
+    todo!()
+}
+
+#[test]
+fn parse_heave_limit_parses_valid_input() {
+    assert_eq!(parse_heave_limit("2.5").unwrap(), 2.5);
+}
+
+#[test]
+fn parse_heave_limit_errors_on_invalid_input() {
+    assert!(parse_heave_limit("not a number").is_err());
+}</code></pre>
+      <p>
+        <strong>Write the body yourself.</strong> You'll need <code>str::parse::&lt;f64&gt;()</code>
+        (which returns a <code>Result</code>) and <code>?</code>, in the same shape as the field
+        study's <code>raw.trim().parse()?</code>. Use <code>.context("...")</code> on the call, the
+        same way <code>resolve_heave_limit</code> does above. Get both tests green.
+      </p>
+      <p>
+        Then add a small <code>Option</code>-returning lookup alongside it — no <code>Result</code>
+        needed here, since a missing override isn't an error:
+      </p>
+      <pre><code>use std::collections::HashMap;
+
+/// Looks up a raw heave-limit override by key, if one was set.
+fn lookup_heave_limit_override(parameters: &amp;HashMap&lt;String, String&gt;, key: &amp;str) -&gt; Option&lt;String&gt; {
+    todo!()
+}
+
+#[test]
+fn lookup_heave_limit_override_returns_none_when_missing() {
+    let parameters = HashMap::new();
+    assert_eq!(lookup_heave_limit_override(&amp;parameters, "heave_limit.site-1"), None);
+}
+
+#[test]
+fn lookup_heave_limit_override_returns_value_when_present() {
+    let mut parameters = HashMap::new();
+    parameters.insert("heave_limit.site-1".to_string(), "3.2".to_string());
+    assert_eq!(
+        lookup_heave_limit_override(&amp;parameters, "heave_limit.site-1"),
+        Some("3.2".to_string())
+    );
+}</code></pre>
+      <p>
+        This one's a one-liner: <code>.get(key)</code> plus <code>.cloned()</code> — the exact
+        <code>HashMap::get</code>-returns-<code>Option</code> behavior from Lesson 9's checkpoint,
+        now put to use. Get both new tests green too.
+      </p>
+    </li>
+  </ol>
+
+  <p><span class="win-badge">Tangible win</span> A function that fails cleanly on bad input instead of panicking, plus one that reports "not set" without treating it as an error — the exact <code>?</code> + <code>.context()</code> idiom the field study's <code>resolve_heave_limit</code> uses.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Every module handler in a real backend service tends to follow this exact shape:
+      <code>fn ... -&gt; Result&lt;...&gt;</code>, littered with <code>?</code>. You can now read
+      the control flow of any of them without getting lost in error-handling noise.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch09-00-error-handling.html">chapter 9, "Error Handling"</a>,
+      and the <a href="https://docs.rs/anyhow/latest/anyhow/">anyhow crate docs</a> for
+      <code>.context()</code> specifically. Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/error-handling.html">"Error Handling"</a>
+      chapter is a direct match, including the same <code>thiserror</code> vs. <code>anyhow</code>
+      split (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You already did
+      Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/13_error_handling">13_error_handling</a>
+      exercise as task 1's warm-up above. For extra reps on <code>Option</code> specifically,
+      Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/12_options">12_options</a>
+      exercise set isolates it on its own (see <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--checkpoint">
+    <span class="callout-label">Retrieval checkpoint — Lessons 7-9, closed-book, ~2 min</span>
+    <p>
+      Answer from memory before opening the reveal:
+    </p>
+    <ol>
+      <li>Which elision rule fills in the output lifetime for <code>fn label(&amp;self) -&gt; &amp;str</code> automatically, with no annotation written?</li>
+      <li>What does <code>HashMap::get</code> return when the key isn't present — does it panic, like a Python <code>dict[key]</code>?</li>
+    </ol>
+    <details>
+      <summary>Reveal the answers</summary>
+      <div class="details-body">
+        <p>
+          <strong>1.</strong> Rule 3: if one parameter is <code>&amp;self</code>/<code>&amp;mut self</code>,
+          the output gets <code>self</code>'s lifetime (Lesson 7).
+        </p>
+        <p>
+          <strong>2.</strong> No panic — it returns <code>None</code>. "Might not be there" is
+          baked into the <code>Option&lt;&amp;V&gt;</code> return type instead of raising an
+          error (Lesson 9).
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If the difference between <code>anyhow::Result</code> and a hand-written matchable enum
+      like Lesson 4's <code>AccessOutcome</code> feels blurry, ask now — Lesson 11 assumes you can
+      tell them apart, since traits are how both actually work under the hood.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> traits — this time you design the trait yourself, not just implement
+    one, tied to a synthetic validation trait and its struct-shaped enum variants.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0009-collections-and-strings.html">← Lesson 9</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0011-traits-and-conversions.html">Lesson 11 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

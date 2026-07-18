@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference: Rustlings Cross-Map</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends</span>
+    <span>
+      <a href="../MISSION.md">Mission</a>
+      <a href="0001-rust-backend-map.html">Concept map</a>
+      <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map</a>
+      <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet</a>
+      <a href="../lessons/0001-open-rust-with-feedback.html">Lesson 1</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Reference: Rustlings Cross-Map</h1>
+  <p class="subtitle">Where <a href="https://rustlings.rust-lang.org/">Rustlings</a> lines up with each lesson here — and what it covers that this course doesn't (yet).</p>
+
+  <p>
+    Rustlings is closer in spirit to this course than Comprehensive Rust or Rust By Example are:
+    it's a series of small, deliberately broken programs you fix until they compile and pass —
+    the same fix-it-until-the-test-is-green shape as every stub-fill exercise in this course, just
+    without the backend-domain tie-in. Use it for <em>extra reps</em> on one specific mechanic
+    when a lesson's single exercise isn't enough practice, not as a substitute for a lesson's
+    field study.
+  </p>
+
+  <div class="callout callout--source">
+    <span class="callout-label">What it is</span>
+    <p>
+      Official exercises from the Rust project itself (<code>rust-lang/rustlings</code> on
+      GitHub), organized into numbered topic directories (e.g. <code>07_structs</code>,
+      <code>16_lifetimes</code>) plus a <code>quizzes/</code> directory. Exercise <em>numbers</em>
+      can drift across Rustlings releases, so this page and every lesson's Rustlings link cite
+      exercise directories by <strong>name</strong>, not position. See <code>RESOURCES.md</code>
+      for how it fits alongside the Book, Comprehensive Rust, and Rust By Example.
+    </p>
+  </div>
+
+  <h2>Lesson-by-lesson cross-map</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Lesson</th>
+        <th>Rustlings exercise set(s)</th>
+        <th>Fit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>L1 — Toolchain anatomy &amp; first function</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/00_intro">00_intro</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/01_variables">01_variables</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/02_functions">02_functions</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/22_clippy">22_clippy</a></td>
+        <td>Partial — Rustlings spreads absolute-basics reps (bindings, <code>mut</code>, shadowing, function signatures, lint fixes) across four small sets; this lesson's field study + one exercise covers less ground per sitting but ties every bit of it to the course's backend domain.</td>
+      </tr>
+      <tr>
+        <td>L2 — Live diagnostics &amp; your signature</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/03_if">03_if</a></td>
+        <td>Direct match on <code>if</code>-as-expression. Rustlings doesn't cover rust-analyzer/LSP setup at all — that's this lesson's other half.</td>
+      </tr>
+      <tr>
+        <td>L3 — Your first jj change</td>
+        <td colspan="2"><em>No equivalent — Rustlings doesn't teach a VCS.</em></td>
+      </tr>
+      <tr>
+        <td>L4 — Enums that carry data</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/08_enums">08_enums</a></td>
+        <td>Direct match on enums-with-data and exhaustive <code>match</code>.</td>
+      </tr>
+      <tr>
+        <td>L5 — Structs that group data</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/07_structs">07_structs</a></td>
+        <td>Direct match — struct definition, field access, and methods.</td>
+      </tr>
+      <tr>
+        <td>L6 — Ownership &amp; borrowing</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/06_move_semantics">06_move_semantics</a></td>
+        <td>Direct match — Rustlings' whole exercise set is built around triggering and fixing "value moved" errors, the exact mechanic this lesson's field study and exercise cover.</td>
+      </tr>
+      <tr>
+        <td>L7 — Lifetimes</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/16_lifetimes">16_lifetimes</a></td>
+        <td>Direct match on elided vs. explicit lifetime annotations.</td>
+      </tr>
+      <tr>
+        <td>L8 — Navigating history with jj</td>
+        <td colspan="2"><em>No equivalent.</em></td>
+      </tr>
+      <tr>
+        <td>L9 — Collections &amp; strings</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/04_primitive_types">04_primitive_types</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/05_vecs">05_vecs</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/09_strings">09_strings</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/11_hashmaps">11_hashmaps</a></td>
+        <td>Partial — Rustlings isolates <code>Vec</code>, <code>String</code>, and <code>HashMap</code> into four separate small sets; this lesson covers all three together against the backend domain's own <code>HashMap</code> usage (operating parameters) in one field study.</td>
+      </tr>
+      <tr>
+        <td>L10 — Result, Option, and the <code>?</code> operator</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/12_options">12_options</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/13_error_handling">13_error_handling</a></td>
+        <td>Direct match, split across two Rustlings sets instead of one lesson.</td>
+      </tr>
+      <tr>
+        <td>L11 — Traits you design yourself</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/15_traits">15_traits</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/23_conversions">23_conversions</a></td>
+        <td>Direct match — Rustlings additionally isolates <code>From</code>/<code>TryFrom</code>/<code>Into</code> conversions into their own set, which this lesson only touches by name.</td>
+      </tr>
+      <tr>
+        <td>L12 — jj squash &amp; split</td>
+        <td colspan="2"><em>No equivalent.</em></td>
+      </tr>
+      <tr>
+        <td>L13 — Generics &amp; trait bounds</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/14_generics">14_generics</a></td>
+        <td>Direct match.</td>
+      </tr>
+      <tr>
+        <td>L14 — Iterators &amp; closures</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/18_iterators">18_iterators</a></td>
+        <td>Direct match — Rustlings doesn't split closures into their own set the way Comprehensive Rust does; iterator combinators (which use closures throughout) cover both in one set.</td>
+      </tr>
+      <tr>
+        <td>L15 — jj conflicts &amp; undo</td>
+        <td colspan="2"><em>No equivalent.</em></td>
+      </tr>
+      <tr>
+        <td>L16 — Shared state &amp; Arc</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/19_smart_pointers">19_smart_pointers</a>, <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/20_threads">20_threads</a></td>
+        <td>Partial — Rustlings builds up through <code>Box</code>/<code>Rc</code> before <code>Arc</code> (like Comprehensive Rust) and pairs shared state with real OS threads via <code>20_threads</code>, which this lesson doesn't cover — the course's own concurrency examples use <code>Arc</code>/<code>Mutex</code>, not OS threads.</td>
+      </tr>
+      <tr>
+        <td>L17 — Modules &amp; visibility</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/10_modules">10_modules</a></td>
+        <td>Direct match on module visibility and paths.</td>
+      </tr>
+      <tr>
+        <td>L18 — Cargo workspaces</td>
+        <td colspan="2"><em>No equivalent — Rustlings doesn't cover Cargo workspaces specifically, same gap as Comprehensive Rust's equivalent chapter.</em></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What Rustlings covers that isn't a lesson here yet</h2>
+  <p>
+    Same policy as the Comprehensive Rust map: these aren't queued lessons — per
+    <code>MISSION.md</code>, curriculum content is pulled by outcomes, not pre-planned. This is a
+    reading list if you want extra reps before a lesson exists for the topic.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Topic</th>
+        <th>Rustlings exercise set</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Variable bindings, <code>mut</code>, shadowing (in depth)</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/01_variables">01_variables</a></td>
+        <td>Thin gap — folded a short mention into Lesson 1's Primary source callout rather than
+          given a dedicated lesson; the mechanic is small enough that Lesson 1's own exercise
+          already exercises it in passing.</td>
+      </tr>
+      <tr>
+        <td>Testing idioms (<code>#[should_panic]</code>, test organization)</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/17_tests">17_tests</a></td>
+        <td>Already on <code>NOTES.md</code>'s "not yet written, deliberately" list.</td>
+      </tr>
+      <tr>
+        <td>Macro authoring (declarative macros)</td>
+        <td><a href="https://github.com/rust-lang/rustlings/tree/main/exercises/21_macros">21_macros</a></td>
+        <td>Explicitly out of scope — see below, same reasoning as the Comprehensive Rust map's
+          macro-authoring exclusion.</td>
+      </tr>
+      <tr>
+        <td>Quizzes (multi-topic, multiple-choice review)</td>
+        <td><code>quizzes/</code> directory</td>
+        <td>Not a lesson-format fit as a <em>broad assessment</em> — these are longer,
+          multiple-choice reviews of several prior topics at once, and this course avoids
+          multiple-choice per the teach skill's own rule against giving away answers through
+          option formatting. That's a different tool from <em>cumulative retrieval</em>, though:
+          this course's own tiny closed-book checkpoints (Lessons 4, 7, 10, 13, 16, 18 — one or
+          two short-answer questions, ~2 minutes, immediate <code>&lt;details&gt;</code> feedback)
+          are cumulative retrieval done at lesson scale instead of quiz scale. Rustlings'
+          <code>quizzes/</code> directory is still fine to do independently once several lessons
+          are behind you, as a longer optional review — just not a substitute for the in-lesson
+          checkpoints.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Explicitly out of scope here</h2>
+  <p>Present in Rustlings, excluded by <code>MISSION.md</code> on purpose — not gaps, decisions:</p>
+  <ul>
+    <li>Macro authoring (<code>21_macros</code>) — a hand-written <code>peg</code>-based DSL grammar is explicitly a "read and admire" kind of file in the concept map, not a "build one yourself" target. Same exclusion as the Comprehensive Rust map.</li>
+  </ul>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If a Rustlings exercise set surfaces a mechanic worth its own lesson — Structs and
+      Collections/Strings were exactly this kind of gap, closed by Lessons 5 and 9 — say so and it
+      can become one, field-studied against the course's backend domain like every other lesson here.
+      This page is a map, not a plan.
+    </p>
+  </div>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="0001-rust-backend-map.html">← Concept map</a> ·
+    <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0003-comprehensive-rust-map.html">Comprehensive Rust map</a> ·
+    <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet</a>
+  </div>
+</footer>
+
+</body>
+</html>

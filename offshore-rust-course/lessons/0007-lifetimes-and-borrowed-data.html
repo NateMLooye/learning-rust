@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 7: Lifetimes — Naming How Long a Borrow Lasts</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 7</span>
+    <span>
+      <a href="0006-ownership-and-borrowing.html">← Lesson 6</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0008-jj-navigate-history.html">Lesson 8 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 7: Lifetimes — Naming How Long a Borrow Lasts</h1>
+  <p class="subtitle">Lesson 6 taught you what borrowing is. This is how the compiler tracks how long a borrow stays valid — usually invisibly, sometimes not.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    You've already been reading and writing lifetimes without knowing it — every
+    <code>&amp;</code> you wrote in Lesson 6 has one. Most of the time the compiler infers it
+    silently. This lesson is about the much smaller set of cases where it can't, and you have to
+    say what you mean. Once this clicks, compiler messages that mention "lifetime" or "borrowed
+    value does not live long enough" stop being mysterious — they're the exact same ownership
+    model from Lesson 6, just applied to <em>how long</em> instead of <em>who owns</em>.
+  </p>
+
+  <h2>Field study first — a lifetime you've already read, then one you haven't</h2>
+  <p>
+    Lesson 5's struct field study showed you domain structs paired with small <code>impl</code>
+    blocks. A service like this might give one of those structs a method like this:
+  </p>
+  <pre><code>pub struct AssetRecord {
+    name: String,
+}
+
+impl AssetRecord {
+    /// Returns this asset's human-readable label.
+    pub fn label(&amp;self) -&gt; &amp;str {
+        &amp;self.name
+    }
+}</code></pre>
+  <p>
+    <code>label</code> takes a reference (<code>&amp;self</code>) and returns a reference
+    (<code>&amp;str</code>) — and has <strong>zero</strong> lifetime annotations written by hand.
+    Now a case where explicit naming isn't optional — a free function, no <code>self</code>,
+    choosing between two borrowed site labels:
+  </p>
+  <pre><code>fn pick_longer_label&lt;'site&gt;(site_a: &amp;'site str, site_b: &amp;'site str) -&gt; &amp;'site str {
+    if site_a.len() &gt;= site_b.len() {
+        site_a
+    } else {
+        site_b
+    }
+}</code></pre>
+  <p>
+    Two input references, one output reference — and this time, <code>'site</code> is written
+    out on all three. Same shape as <code>label</code> (reference in, reference out), but this
+    one doesn't compile without the annotation. The theory section explains exactly why.
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong>Every reference has a lifetime</strong> — the scope for which it's valid. This
+      isn't new; it's been true of every <code>&amp;</code> since Lesson 6. What's new is that
+      the compiler sometimes needs you to <em>name</em> that scope so it can check a relationship
+      between two or more references.
+    </li>
+    <li>
+      <strong>Lifetime elision has rules, not vibes.</strong> The Rust compiler applies these in
+      order: <em>(1)</em> every reference parameter gets its own lifetime; <em>(2)</em> if there's
+      exactly <strong>one</strong> input lifetime, the output gets that same one; <em>(3)</em> if
+      one of the parameters is <code>&amp;self</code>/<code>&amp;mut self</code>, the output gets
+      <code>self</code>'s lifetime. <code>label(&amp;self) -&gt; &amp;str</code> is really
+      <code>fn label&lt;'a&gt;(&amp;'a self) -&gt; &amp;'a str</code> — rule 3 fills it in for
+      you, silently.
+    </li>
+    <li>
+      <strong><code>pick_longer_label</code> fits none of the elision rules.</strong> It has two
+      input references (<code>site_a</code>, <code>site_b</code>) and isn't a method — no
+      <code>self</code>. Rule 2 needs exactly one input lifetime; rule 3 needs a
+      <code>self</code>. Neither applies, so the compiler has no way to know which input the
+      output reference is tied to — you have to say so.
+    </li>
+    <li>
+      <strong>A lifetime annotation is a promise you're stating, not a request you're
+      making.</strong> Writing <code>'site</code> on three places doesn't make anything live
+      longer — Rust doesn't extend lifetimes to satisfy annotations. It tells the compiler
+      "this output is only ever valid as long as these specific inputs are," so the compiler can
+      <em>reject</em> any caller that would violate that. Same enforcement spirit as Lesson 6's
+      move checker, applied to duration instead of ownership.
+    </li>
+    <li>
+      <strong>Meaningful names beat <code>'a</code>.</strong> <code>'site</code> tells a reader
+      what the lifetime <em>represents</em> (a borrowed site label) the same way a good variable
+      name does — <code>'a</code> is the generic fallback for when nothing more specific is
+      available, not the default style to reach for.
+    </li>
+  </ul>
+
+  <details class="callout callout--vim">
+    <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>ci&lt;</code> <span class="gloss">— change just the lifetime inside the angle brackets</span></summary>
+    <div class="details-body">
+    <p>
+      Same <strong>c</strong>hange + <strong>i</strong>nner pattern from Lesson 1's
+      <code>ci{</code>, different text object: the <code>&lt;'site&gt;</code> parameter list is an
+      angle-bracket pair, so <code>ci&lt;</code> on <code>pick_longer_label&lt;'site&gt;</code>
+      changes just <code>'site</code>, brackets left in place. Useful the moment you need to rename
+      a lifetime consistently — including while writing your own
+      <code>resolve_access_label&lt;'source&gt;</code> below.
+    </p>
+    </div>
+  </details>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before writing <code>resolve_access_label</code> below, practice the elision-vs-explicit
+        distinction on its own, away from the domain's real types. Copy just the
+        first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/16_lifetimes">16_lifetimes</a>
+        set, <code>lifetimes1.rs</code>, into <code>rust-practice/src/bin/</code> and get it green
+        — see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more depth than the
+        theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html">chapter 10.3,
+        "Validating References with Lifetimes"</a> walks through the elision rules in full.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>16_lifetimes</code>
+        (<code>lifetimes2.rs</code> onward) is good additional reps, not required for this
+        lesson.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Write a function the elision rules can't handle — full signature yourself</span>
+      <p>
+        No stub, no signature this time. The failing tests come first, before you design anything
+        against them:
+      </p>
+      <blockquote>
+        Write a function <code>resolve_access_label</code> that takes a <code>primary</code> and
+        a <code>fallback</code> string slice, and returns <code>primary</code> if it's non-empty,
+        otherwise <code>fallback</code>.
+      </blockquote>
+      <pre><code>#[test]
+fn resolve_access_label_prefers_primary_when_present() {
+    assert_eq!(resolve_access_label("primary", "fallback"), "primary");
+}
+
+#[test]
+fn resolve_access_label_falls_back_when_primary_empty() {
+    assert_eq!(resolve_access_label("", "fallback"), "fallback");
+}</code></pre>
+      <p>
+        This is the same deliberate scaffold fading from Lesson 2's <code>max</code>, one level
+        further: last time the parameter/return <em>types</em> were already obvious from the
+        test; this time you also have to decide the lifetime parameter itself.
+        <strong>Write the full signature and body yourself</strong> — no stub. This has the exact
+        shape that breaks elision: two <code>&amp;str</code> inputs, no <code>self</code>, one
+        <code>&amp;str</code> output that could come from either parameter. You'll need
+        <code>.is_empty()</code> and an explicit lifetime parameter on the signature. Get both
+        tests green.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: trigger E0106 on purpose</span>
+    <p>
+      Before adding the lifetime, try writing the signature with no annotation at all:
+      <code>fn resolve_access_label(primary: &amp;str, fallback: &amp;str) -&gt; &amp;str</code>. Read
+      the "missing lifetime specifier" error — it will name the exact ambiguity from the theory
+      section (which input does the output borrow from?) rather than a generic complaint. Then
+      add <code>&lt;'source&gt;</code> and watch it resolve.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> A function you designed end-to-end that only compiles because you told the compiler the relationship it couldn't infer on its own — the same gap <code>pick_longer_label</code> closes above.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Anywhere a backend service resolves a smaller piece out of a larger borrowed structure —
+      picking one label out of a request without cloning the whole request just to hand back a
+      reference to one field of it — this pattern is how it avoids unnecessary allocation. You
+      now know why those signatures carry a named lifetime instead of nothing.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html">chapter 10.3, "Validating References with Lifetimes"</a>
+      — read the <code>longest</code> function walkthrough and the three elision rules in full;
+      this lesson's theory section is a compressed version of exactly that. For a second angle
+      with runnable slides, see Comprehensive Rust's
+      <a href="https://google.github.io/comprehensive-rust/lifetimes.html">"Lifetimes"</a>
+      chapter (see <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a> for how it maps to
+      this course). You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/16_lifetimes">16_lifetimes</a>
+      exercise, which isolates exactly this elision-vs-explicit distinction, as task 1's warm-up
+      above (see <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--checkpoint">
+    <span class="callout-label">Retrieval checkpoint — Lessons 4-6, closed-book, ~2 min</span>
+    <p>
+      Answer from memory before opening the reveal:
+    </p>
+    <ol>
+      <li>What does the compiler do if a <code>match</code> on an enum leaves out a variant?</li>
+      <li>You pass a <code>String</code> into a function by value (no <code>&amp;</code>). Can the caller still use that variable afterward?</li>
+    </ol>
+    <details>
+      <summary>Reveal the answers</summary>
+      <div class="details-body">
+        <p>
+          <strong>1.</strong> It refuses to compile — <code>match</code> is exhaustive, a
+          forgotten variant is a compile error, not a silently-skipped branch (Lesson 4).
+        </p>
+        <p>
+          <strong>2.</strong> No. Ownership moved into the function; the original variable is
+          gone, and using it again is a compile error — not "might be stale," won't build
+          (Lesson 6).
+        </p>
+      </div>
+    </details>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If "a lifetime annotation doesn't make anything live longer, it's a constraint the compiler
+      checks" doesn't fully land, say so before moving on — it's the one idea in this lesson that,
+      if missed, makes every future lifetime error read as arbitrary instead of logical.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> a jj lesson — <code>jj edit</code>, going back to fix an earlier
+    change without disturbing the ones on top of it. A breather after two dense Rust lessons in a
+    row.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0006-ownership-and-borrowing.html">← Lesson 6</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0008-jj-navigate-history.html">Lesson 8 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

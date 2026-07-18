@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference: Comprehensive Rust Cross-Map</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends</span>
+    <span>
+      <a href="../MISSION.md">Mission</a>
+      <a href="0001-rust-backend-map.html">Concept map</a>
+      <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet</a>
+      <a href="0005-rustlings-map.html">Rustlings map</a>
+      <a href="../lessons/0001-open-rust-with-feedback.html">Lesson 1</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Reference: Comprehensive Rust Cross-Map</h1>
+  <p class="subtitle">Where <a href="https://google.github.io/comprehensive-rust/">Google's Comprehensive Rust</a> course lines up with each lesson here — and what it covers that this course doesn't (yet).</p>
+
+  <p>
+    Comprehensive Rust is a different animal from this course: a 4-day, lecture-style, breadth-first
+    curriculum with runnable example slides and instructor speaker notes, versus this course's
+    narrow, TDD stub-fill, backend-tied approach. Don't read it <em>instead of</em> doing a lesson's
+    exercise — the whole point here is that you write the body yourself against a failing test, and
+    Comprehensive Rust's examples are filled in. Use it <em>after</em> a lesson, as a second angle on
+    the same concept, or to pick up vocabulary/terminology this course doesn't spell out.
+  </p>
+
+  <div class="callout callout--source">
+    <span class="callout-label">What it is</span>
+    <p>
+      Free course from Google's Android team, covering the full language plus deep dives
+      (Android, Chromium, bare-metal, concurrency, idiomatic Rust, unsafe). See
+      <code>RESOURCES.md</code> for how it fits alongside the Book, Rust By Example, and Rustlings.
+    </p>
+  </div>
+
+  <h2>Lesson-by-lesson cross-map</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Lesson</th>
+        <th>Comprehensive Rust chapter(s)</th>
+        <th>Fit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>L1 — Toolchain anatomy &amp; first function</td>
+        <td><a href="https://google.github.io/comprehensive-rust/hello-world.html">Hello, World</a>, <a href="https://google.github.io/comprehensive-rust/cargo.html">Using Cargo</a></td>
+        <td>Direct match — setup + first program, though CR doesn't go into rust-analyzer/nvim.</td>
+      </tr>
+      <tr>
+        <td>L2 — Live diagnostics &amp; your signature</td>
+        <td><a href="https://google.github.io/comprehensive-rust/control-flow-basics/if.html">if Expressions</a></td>
+        <td>Direct match on if-as-expression. rust-analyzer/LSP setup isn't CR's focus at all.</td>
+      </tr>
+      <tr>
+        <td>L3 — Your first jj change</td>
+        <td colspan="2"><em>No equivalent — CR doesn't teach a VCS.</em></td>
+      </tr>
+      <tr>
+        <td>L4 — Enums that carry data</td>
+        <td><a href="https://google.github.io/comprehensive-rust/user-defined-types.html">User-Defined Types</a>, <a href="https://google.github.io/comprehensive-rust/pattern-matching.html">Pattern Matching</a></td>
+        <td>Partial — CR's Pattern Matching chapter goes further: destructuring structs/enums/tuples, match guards, <code>@</code>-bindings, <code>let</code>-control-flow. This lesson only covers exhaustive <code>match</code> on an enum.</td>
+      </tr>
+      <tr>
+        <td>L5 — Structs that group data</td>
+        <td><a href="https://google.github.io/comprehensive-rust/user-defined-types/named-structs.html">Named Structs</a></td>
+        <td>Direct match — added as a dedicated lesson.</td>
+      </tr>
+      <tr>
+        <td>L6 — Ownership &amp; borrowing</td>
+        <td><a href="https://google.github.io/comprehensive-rust/references.html">References</a>, <a href="https://google.github.io/comprehensive-rust/memory-management.html">Memory Management</a>, <a href="https://google.github.io/comprehensive-rust/borrowing.html">Borrowing</a></td>
+        <td>Partial — CR spends roughly 2.5 hours across two non-adjacent days on this; this lesson is one field-study + one stub-fill.</td>
+      </tr>
+      <tr>
+        <td>L7 — Lifetimes</td>
+        <td><a href="https://google.github.io/comprehensive-rust/lifetimes.html">Lifetimes</a></td>
+        <td>Direct match — covered as a dedicated lesson. CR spends 1h5 on it; this lesson is one two-part field-study + one stub-fill.</td>
+      </tr>
+      <tr>
+        <td>L8 — Navigating history with jj</td>
+        <td colspan="2"><em>No equivalent.</em></td>
+      </tr>
+      <tr>
+        <td>L9 — Collections &amp; strings</td>
+        <td><a href="https://google.github.io/comprehensive-rust/std-types.html">Standard Library Types</a></td>
+        <td>Partial — covered as a dedicated lesson (<code>Vec</code>/<code>String</code>/<code>HashMap</code>). CR spends 1 hour and also covers <code>Option</code>/<code>Result</code> in the same segment; this lesson leaves those to L10.</td>
+      </tr>
+      <tr>
+        <td>L10 — Result, Option, and the <code>?</code> operator</td>
+        <td><a href="https://google.github.io/comprehensive-rust/error-handling.html">Error Handling</a></td>
+        <td>Direct match, including <code>thiserror</code> vs. <code>anyhow</code> — the same split this course's concept map calls out in the backend domain.</td>
+      </tr>
+      <tr>
+        <td>L11 — Traits you design yourself</td>
+        <td><a href="https://google.github.io/comprehensive-rust/methods-and-traits.html">Methods and Traits</a></td>
+        <td>Direct match.</td>
+      </tr>
+      <tr>
+        <td>L12 — jj squash &amp; split</td>
+        <td colspan="2"><em>No equivalent.</em></td>
+      </tr>
+      <tr>
+        <td>L13 — Generics &amp; trait bounds</td>
+        <td><a href="https://google.github.io/comprehensive-rust/generics.html">Generics</a></td>
+        <td>Direct match — CR additionally covers <code>impl Trait</code> and <code>dyn Trait</code> return/argument positions, which this lesson doesn't.</td>
+      </tr>
+      <tr>
+        <td>L14 — Iterators &amp; closures</td>
+        <td><a href="https://google.github.io/comprehensive-rust/closures.html">Closures</a>, <a href="https://google.github.io/comprehensive-rust/iterators.html">Iterators</a></td>
+        <td>Direct match, split across two CR chapters instead of one lesson.</td>
+      </tr>
+      <tr>
+        <td>L15 — jj conflicts &amp; undo</td>
+        <td colspan="2"><em>No equivalent.</em></td>
+      </tr>
+      <tr>
+        <td>L16 — Shared state &amp; Arc</td>
+        <td><a href="https://google.github.io/comprehensive-rust/smart-pointers.html">Smart Pointers</a>, <a href="https://google.github.io/comprehensive-rust/concurrency/welcome.html">Concurrency: Shared State</a></td>
+        <td>Partial — CR builds up through <code>Box</code> and <code>Rc</code> before <code>Arc</code>, and pairs shared state with actual OS threads/<code>Mutex</code>. This lesson jumps straight to <code>Arc&lt;Mutex&lt;...&gt;&gt;</code> as the course's synthetic <code>ControllerState</code> shared-state example does.</td>
+      </tr>
+      <tr>
+        <td>L17 — Modules &amp; visibility</td>
+        <td><a href="https://google.github.io/comprehensive-rust/modules.html">Modules</a></td>
+        <td>Direct match on module visibility and paths.</td>
+      </tr>
+      <tr>
+        <td>L18 — Cargo workspaces</td>
+        <td colspan="2"><em>No equivalent — CR doesn't cover Cargo workspaces specifically (see the Cargo Book for that, per <code>RESOURCES.md</code>).</em></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What Comprehensive Rust covers that isn't a lesson here yet</h2>
+  <p>
+    These aren't queued lessons — per <code>MISSION.md</code>, curriculum content is pulled by
+    outcomes, not pre-planned. This is a reading list if you want to look ahead or fill a gap
+    yourself before a lesson exists for it.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Topic</th>
+        <th>Comprehensive Rust chapter</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Tuples &amp; arrays</td>
+        <td><a href="https://google.github.io/comprehensive-rust/tuples-and-arrays.html">Tuples and Arrays</a> (35 min)</td>
+        <td>Gap — not covered by a dedicated lesson.</td>
+      </tr>
+      <tr>
+        <td>Standard library traits (<code>From</code>/<code>Into</code>, <code>Default</code>, comparisons, casting, <code>Read</code>/<code>Write</code>)</td>
+        <td><a href="https://google.github.io/comprehensive-rust/std-traits.html">Standard Library Traits</a> (1 hr)</td>
+        <td>Gap — touches territory L11/L14 already opened, but CR treats it systematically.</td>
+      </tr>
+      <tr>
+        <td>Testing idioms</td>
+        <td><a href="https://google.github.io/comprehensive-rust/testing.html">Testing</a> (45 min)</td>
+        <td>Already on <code>NOTES.md</code>'s "not yet written, deliberately" list.</td>
+      </tr>
+      <tr>
+        <td>Concurrency deep dive (threads, channels, <code>Send</code>/<code>Sync</code>, async/await + Tokio)</td>
+        <td><a href="https://google.github.io/comprehensive-rust/concurrency/welcome.html">Concurrency in Rust</a> (full day)</td>
+        <td>Already on <code>NOTES.md</code>'s "not yet written, deliberately" list (async/Tokio specifically).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Explicitly out of scope here</h2>
+  <p>Present in Comprehensive Rust, excluded by <code>MISSION.md</code> on purpose — not gaps, decisions:</p>
+  <ul>
+    <li><a href="https://google.github.io/comprehensive-rust/unsafe-rust.html">Unsafe Rust</a> — this course's backend domain has essentially no <code>unsafe</code> code. Not where the leverage is.</li>
+    <li>Macro authoring — a hand-written parser or DSL grammar is explicitly a "read and admire" kind of file in the concept map, not a "build one yourself" target.</li>
+    <li>Android, Chromium, and bare-metal deep dives — not relevant to this course's domain (backend services, not embedded/mobile/browser code).</li>
+  </ul>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If working through a CR chapter surfaces a concept worth a real lesson — Lifetimes and
+      Standard Library Types were exactly this kind of gap, and are now Lessons 7 and 9 — say so
+      and it can become one, field-studied against the course's backend domain like every other
+      lesson here. This page is a map, not a plan.
+    </p>
+  </div>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="0001-rust-backend-map.html">← Concept map</a> ·
+    <a href="0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0004-vim-keybind-cheatsheet.html">Vim cheatsheet →</a> ·
+    <a href="0005-rustlings-map.html">Rustlings map →</a>
+  </div>
+</footer>
+
+</body>
+</html>

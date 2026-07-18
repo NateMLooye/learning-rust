@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 14: Iterators &amp; Closures</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 14</span>
+    <span>
+      <a href="0013-generics-and-trait-bounds.html">← Lesson 13</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0001-rust-backend-map.html">Concept map</a>
+      <a href="0015-jj-conflicts-and-undo.html">Lesson 15 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 14: Iterators &amp; Closures</h1>
+  <p class="subtitle">One synthetic line validates an entire list — using the trait you designed in Lesson 11.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Python's list comprehensions and <code>map</code>/<code>filter</code> have direct Rust
+    equivalents, but Rust's iterator methods chain together and, once the optimizer is turned on
+    (a release build, or <code>opt-level</code> set in a debug profile), typically compile down to
+    the same code as a hand-written loop — "zero-cost abstraction" is a real design goal here, not
+    marketing, but it's an optimizer outcome you can usually rely on, not a language-level
+    guarantee that holds unconditionally in every build.
+  </p>
+
+  <h2>Field study first</h2>
+  <p>
+    A service like this might validate every registered check for a controller before it starts
+    accepting transfer requests:
+  </p>
+  <pre><code>checks.iter().try_for_each(OperationalCheck::validate)?;</code></pre>
+  <p>
+    <code>OperationalCheck::validate</code> — the exact trait you designed the shape of in
+    Lesson 11, written as a plain function reference. <code>try_for_each</code> calls it on every
+    item in the list, stopping at the first error and propagating it out via <code>?</code>. One
+    line replaces a manual loop with a <code>match</code> inside it.
+  </p>
+
+  <h2>The theory</h2>
+  <ul>
+    <li>
+      <strong>Iterators are lazy.</strong> <code>.iter()</code> doesn't do anything by itself — it
+      produces a sequence of borrowed items that only actually run when something consumes them
+      (<code>.collect()</code>, <code>.for_each()</code>, a <code>for</code> loop, etc.).
+    </li>
+    <li>
+      <strong>Closures</strong> (<code>|x| x + 1</code>) are anonymous functions you can pass
+      around — Python's <code>lambda</code>, with the same idea: capture some context, take
+      arguments, return a value.
+    </li>
+    <li>
+      <strong>A method reference</strong> like <code>OperationalCheck::validate</code> can be
+      passed anywhere a closure of the matching signature is expected — no
+      <code>|x| x.validate()</code> needed, since that's exactly what the method reference already
+      means.
+    </li>
+    <li>
+      <strong><code>try_for_each</code></strong> is <code>for_each</code>'s fallible cousin: it
+      stops early and returns the first error instead of running to completion regardless.
+    </li>
+  </ul>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Warm up with a Rustlings rep</span>
+      <p>
+        Before rewriting <code>count_ready</code> below, practice iterator combinators on their
+        own, away from the backend's real <code>OperationalCheck::validate</code> call. Copy just
+        the first file of Rustlings'
+        <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/18_iterators">18_iterators</a>
+        set, <code>iterators1.rs</code>, into <code>rust-practice/src/bin/</code> and get it
+        green — see the tooling cheatsheet's
+        <a href="../reference/0002-rust-tooling-cheatsheet.html#rustlings-warmup">"Wiring a
+        Rustlings exercise into rust-practice"</a> for the exact steps. For more depth than the
+        theory section above covers, the Rust Book's
+        <a href="https://doc.rust-lang.org/book/ch13-02-iterators.html">"Processing a Series of
+        Items with Iterators"</a> section goes further.
+      </p>
+      <p>
+        <strong>Optional extra practice:</strong> the rest of <code>18_iterators</code>
+        (<code>iterators2.rs</code> onward) is good additional reps, not required for this
+        lesson.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Replace a loop with iterator combinators</span>
+      <p>Add this scaffold:</p>
+      <pre><code>/// Counts how many outcomes in the slice passed, using the `Outcome` trait from Lesson 11.
+fn count_ready(outcomes: &amp;[AccessOutcome]) -&gt; usize {
+    todo!()
+}
+
+#[test]
+fn count_ready_counts_correctly() {
+    let outcomes = vec![
+        AccessOutcome::Ready,
+        AccessOutcome::Blocked("high seas".to_string()),
+        AccessOutcome::Ready,
+        AccessOutcome::EscortRequired,
+    ];
+    assert_eq!(count_ready(&amp;outcomes), 2);
+}</code></pre>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — for the second version below</span> <code>yap</code> <span class="gloss">— yank the whole function (paragraph) to duplicate it</span></summary>
+        <div class="details-body">
+        <p>
+          Blank lines separate functions in idiomatic Rust, which makes a whole function a
+          "paragraph" to vim — <code>yap</code> is <strong>y</strong>ank + <strong>a</strong>round
+          + <strong>p</strong>aragraph: it yanks the entire loop-based version, function and
+          surrounding blank line included, so you can paste a copy below and rewrite the copy into
+          the iterator-chain version, keeping the original intact for comparison until you're
+          done.
+        </p>
+        </div>
+      </details>
+      <p>
+        <strong>Write the body two ways.</strong> First, a plain <code>for</code> loop with a
+        counter — get it green. Then replace it with a single iterator chain using
+        <code>.iter()</code>, <code>.filter()</code>, and <code>.count()</code> (you'll need the
+        <code>passed()</code> method from your <code>Outcome</code> trait inside the filter
+        closure). Confirm the test still passes both ways — same behavior, two very different
+        looking implementations.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Optional: try_for_each with a method reference</span>
+    <p>
+      Write a tiny <code>fn report(outcome: &amp;AccessOutcome) -&gt; Result&lt;(), String&gt;</code>
+      that errors on <code>Blocked</code>. Then call
+      <code>outcomes.iter().try_for_each(report)?</code> from a function returning
+      <code>Result&lt;(), String&gt;</code> — the exact shape from the field study, just with your
+      own function instead of <code>OperationalCheck::validate</code>.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> The same behavior written two ways — loop and iterator chain — so you can feel the difference rather than just being told iterators are "more idiomatic."</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      A real backend's readiness checks, iteration over access runs, and much of its audit-log
+      processing lean on exactly this style. Recognizing
+      <code>.iter().try_for_each(SomeTrait::method)</code> as "loop over this, call this trait
+      method, stop on first error" turns a dense one-liner into something you can read at a
+      glance.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      The Rust Book's
+      <a href="https://doc.rust-lang.org/book/ch13-02-iterators.html">"Processing a Series of Items with Iterators"</a>
+      section. Comprehensive Rust splits the same ground across
+      <a href="https://google.github.io/comprehensive-rust/closures.html">"Closures"</a> and
+      <a href="https://google.github.io/comprehensive-rust/iterators.html">"Iterators"</a> (see
+      <a href="../reference/0003-comprehensive-rust-map.html"><code>../reference/0003-comprehensive-rust-map.html</code></a>). You already did Rustlings'
+      <a href="https://github.com/rust-lang/rustlings/tree/main/exercises/18_iterators">18_iterators</a>
+      exercise, which isolates iterator combinators on their own, as task 1's warm-up above (see
+      <a href="../reference/0005-rustlings-map.html"><code>../reference/0005-rustlings-map.html</code></a>).
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If the iterator-chain version felt harder to write than the loop, that's expected the first
+      few times — ask for a second example if the combinator names (<code>filter</code>,
+      <code>count</code>, <code>map</code>, <code>fold</code>) aren't sticking yet.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> a jj lesson — simulating and resolving a real conflict, and actually
+    using <code>jj undo</code> to recover from a mistake rather than just reading about it.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0013-generics-and-trait-bounds.html">← Lesson 13</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0001-rust-backend-map.html">Concept map</a> ·
+    <a href="0015-jj-conflicts-and-undo.html">Lesson 15 →</a>
+  </div>
+</footer>
+
+</body>
+</html>

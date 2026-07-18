@@ -1,0 +1,485 @@
+/* ==========================================================================
+   course.css — shared stylesheet for the "Rust for Offshore Backends" teaching workspace
+   Used by every file in ./lessons/*.html and ./reference/*.html.
+
+   Design goals (see teach skill philosophy):
+     - Tufte-ish: readable serif prose, generous whitespace, minimal chrome.
+     - Print-friendly: lessons and references get revisited and printed.
+     - Consistent: one visual language across all lessons/references so the
+       course reads as a single thing, not a pile of one-offs.
+   ========================================================================== */
+
+:root {
+  --paper: #fdfcf9;
+  --ink: #1a1a1a;
+  --ink-soft: #4a4a45;
+  --rule: #e0ddd3;
+  --code-bg: #f2f0ea;
+  --source-accent: #2b6cb0;
+  --ask-accent: #2f855a;
+  --domain-accent: #c05621;
+  --jj-accent: #6b46c1;
+  --vim-accent: #0d7377;
+  --checkpoint-accent: #b7791f;
+  --max-width: 42rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  line-height: 1.65;
+  font-size: 1.05rem;
+}
+
+/* ---------- layout ---------- */
+
+header.course-nav {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.75rem 1.5rem;
+}
+
+header.course-nav .nav-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+header.course-nav .nav-inner a {
+  color: var(--ink-soft);
+  margin-right: 1rem;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--rule);
+}
+
+header.course-nav .nav-inner a:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink-soft);
+}
+
+main {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+footer.course-footer {
+  border-top: 1px solid var(--rule);
+  margin-top: 3rem;
+  padding: 1.5rem;
+}
+
+footer.course-footer .footer-inner {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+footer.course-footer a {
+  color: var(--ink-soft);
+}
+
+/* ---------- typography ---------- */
+
+h1, h2, h3, h4 {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+h1 {
+  font-size: 1.9rem;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin: 0 0 2rem;
+  font-style: italic;
+}
+
+h2 {
+  font-size: 1.35rem;
+  margin: 2.25rem 0 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.3rem;
+}
+
+h3 {
+  font-size: 1.05rem;
+  margin: 1.75rem 0 0.5rem;
+}
+
+p, li {
+  margin: 0 0 1rem;
+}
+
+ul, ol {
+  padding-left: 1.4rem;
+}
+
+strong {
+  font-weight: 700;
+}
+
+a {
+  color: var(--source-accent);
+  text-decoration-thickness: 1px;
+}
+
+/* ---------- code ---------- */
+
+code {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+}
+
+pre {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+  background: var(--code-bg);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1em;
+}
+
+/* ---------- tables (reference docs) ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0 1.75rem;
+  font-size: 0.92rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+th {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  border-bottom: 2px solid var(--ink-soft);
+}
+
+tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.015);
+}
+
+td code {
+  white-space: nowrap;
+}
+
+/* ---------- dropdowns (details/summary) ---------- */
+
+details {
+  margin: 0;
+}
+
+details > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+details > summary::before {
+  content: "▸";
+  display: inline-block;
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  font-size: 0.7em;
+  transform: translateY(-0.05em);
+  transition: transform 0.1s ease;
+}
+
+details[open] > summary::before {
+  transform: rotate(90deg) translateX(0.1em);
+}
+
+details > summary .gloss {
+  color: var(--ink-soft);
+}
+
+details > .details-body {
+  margin: 0.5rem 0 0.9rem 1.2rem;
+  color: var(--ink-soft);
+}
+
+details > .details-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* per-command dropdown lists — replaces verbose reference tables */
+
+.cmd-list {
+  margin: 1rem 0 1.75rem;
+  border-top: 1px solid var(--rule);
+}
+
+.cmd-list details {
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.cmd-list summary code {
+  font-weight: 700;
+}
+
+/* dropdown-ified callouts (per-lesson "Vim reminder" boxes) */
+
+details.callout summary .callout-label {
+  display: inline;
+  margin-bottom: 0;
+}
+
+details.callout > .details-body {
+  margin-left: 1.2rem;
+  color: var(--ink);
+}
+
+/* ---------- callouts ---------- */
+
+.callout {
+  border-left: 4px solid var(--rule);
+  background: rgba(0, 0, 0, 0.02);
+  padding: 0.9rem 1.1rem;
+  margin: 1.5rem 0;
+  border-radius: 0 4px 4px 0;
+}
+
+.callout p:last-child {
+  margin-bottom: 0;
+}
+
+.callout .callout-label {
+  display: block;
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+.callout--source {
+  border-left-color: var(--source-accent);
+}
+.callout--source .callout-label {
+  color: var(--source-accent);
+}
+
+.callout--ask {
+  border-left-color: var(--ask-accent);
+}
+.callout--ask .callout-label {
+  color: var(--ask-accent);
+}
+
+.callout--domain {
+  border-left-color: var(--domain-accent);
+}
+.callout--domain .callout-label {
+  color: var(--domain-accent);
+}
+
+.callout--vcs {
+  border-left-color: var(--jj-accent);
+}
+.callout--vcs .callout-label {
+  color: var(--jj-accent);
+}
+
+.callout--vim {
+  border-left-color: var(--vim-accent);
+}
+.callout--vim .callout-label {
+  color: var(--vim-accent);
+}
+
+/* cumulative retrieval checkpoints — tiny closed-book recall, not a quiz.
+   Structure: .callout--checkpoint holds a question (plain text) and a
+   plain <details> reveal for the answer/pointer, reusing the details/
+   details-body rules above rather than any bespoke inline styling. */
+.callout--checkpoint {
+  border-left-color: var(--checkpoint-accent);
+}
+.callout--checkpoint .callout-label {
+  color: var(--checkpoint-accent);
+}
+.callout--checkpoint details {
+  margin-top: 0.6rem;
+}
+.callout--checkpoint details > summary {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--checkpoint-accent);
+}
+
+/* inline "Vim reminder" tag used outside the per-lesson callout dropdowns
+   (e.g. reference/0004's intro paragraph) — same label, no box chrome */
+.vim-tag {
+  display: inline;
+  border: none;
+  padding: 0;
+  background: none;
+}
+
+/* ---------- task lists (lessons) ---------- */
+
+ol.task-list {
+  list-style: none;
+  padding-left: 0;
+  counter-reset: task-counter;
+}
+
+ol.task-list > li {
+  counter-increment: task-counter;
+  position: relative;
+  padding-left: 2.4rem;
+  margin-bottom: 1.5rem;
+}
+
+ol.task-list > li::before {
+  content: counter(task-counter);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+ol.task-list > li > .task-title {
+  display: block;
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+/* ---------- misc ---------- */
+
+blockquote {
+  margin: 1.25rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--rule);
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 2.5rem 0;
+}
+
+.win-badge {
+  display: inline-block;
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--ask-accent);
+  color: var(--paper);
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
+}
+
+/* ---------- print ---------- */
+
+@media print {
+  header.course-nav,
+  footer.course-footer {
+    display: none;
+  }
+
+  body {
+    background: #fff;
+    font-size: 11pt;
+  }
+
+  main {
+    padding: 0;
+    max-width: none;
+  }
+
+  a {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+
+  pre, table, .callout, details {
+    page-break-inside: avoid;
+  }
+
+  pre {
+    white-space: pre-wrap;
+  }
+
+  /* dropdowns have no interactivity on paper — force every one open so the
+     full command reference (not just the summary line) makes it to print */
+  details > summary::before {
+    display: none;
+  }
+
+  details:not([open]) > summary ~ * {
+    display: block;
+  }
+}

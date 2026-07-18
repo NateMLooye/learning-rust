@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 8: Navigating History with jj</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+
+<header class="course-nav">
+  <div class="nav-inner">
+    <span>Rust for Offshore Backends · Lesson 8</span>
+    <span>
+      <a href="0007-lifetimes-and-borrowed-data.html">← Lesson 7</a>
+      <a href="../MISSION.md">Mission</a>
+      <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a>
+      <a href="0009-collections-and-strings.html">Lesson 9 →</a>
+    </span>
+  </div>
+</header>
+
+<main>
+
+  <h1>Lesson 8: Navigating History with jj</h1>
+  <p class="subtitle"><code>jj edit</code> — going back to fix an earlier change without disturbing the ones on top of it.</p>
+
+  <h2>Why this matters</h2>
+  <p>
+    Lesson 3 gave you <code>describe</code>/<code>new</code> — enough to move forward. Real work
+    isn't linear: you'll spot a mistake in something you already described, want to fix it, and
+    not want to lose the changes you made after it. That's what <code>jj edit</code> is for, and
+    it's exactly the situation you'll hit constantly in a real review cycle on a backend service.
+    Also a deliberate breather after two dense Rust lessons in a row (ownership, then lifetimes).
+  </p>
+
+  <h2>The idea</h2>
+  <p>
+    <code>jj edit &lt;change-id&gt;</code> moves your working copy to point at <em>any</em> existing
+    change, not just the tip. Whatever you do next edits <em>that</em> change directly — and
+    because jj tracks changes by a stable ID rather than by position, everything built on top of it
+    gets <strong>automatically rebased</strong> once you're done. You don't rewrite history by hand;
+    jj does it for you.
+  </p>
+
+  <h2>Today's tasks</h2>
+
+  <ol class="task-list">
+    <li>
+      <span class="task-title">Find something worth fixing</span>
+      <p>In <code>rust-practice</code>:</p>
+      <pre><code>jj log</code></pre>
+      <p>
+        Find the change from Lessons 1-2 — per Lesson 3, that's the single change containing both
+        the <code>add</code> and <code>max</code> functions, since the underlying git repo had zero
+        commits until you described it there. Note its change ID — the short alphanumeric string
+        on the left of each log line, not the commit hash.
+      </p>
+    </li>
+
+    <li>
+      <details class="callout callout--vim">
+        <summary><span class="callout-label">Vim reminder — before you start this one</span> <code>A</code> <span class="gloss">— append at the end of the line, no need to navigate there first</span></summary>
+        <div class="details-body">
+        <p>
+          You're appending a clause to the end of an existing doc comment, not rewriting it —
+          <code>A</code> (mnemonic: <strong>A</strong>ppend at end of line) drops you into insert
+          mode right after the last character on the line, no need to navigate there with
+          <code>$</code> first.
+        </p>
+        </div>
+      </details>
+      <span class="task-title">Edit it directly</span>
+      <pre><code>jj edit &lt;that-change-id&gt;</code></pre>
+      <p>
+        Your working copy now shows exactly the state of the repo at that point in history. Fix
+        something small and real in it — for example, tighten the doc comment on <code>add</code>
+        to also mention it panics on integer overflow in debug builds (true, and worth knowing:
+        Rust checks for overflow and panics by default in debug builds; the <em>release</em>
+        profile defaults <code>overflow-checks</code> to <code>false</code>, i.e. wrapping, but
+        that's a Cargo profile setting in <code>Cargo.toml</code>, not a language guarantee — a
+        project can and some do turn overflow checks on for release too).
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Watch the rebase happen</span>
+      <pre><code>jj log</code></pre>
+      <p>
+        Everything that was built on top of the change you just edited — Lesson 4's
+        <code>AccessOutcome</code>, Lesson 5's <code>AccessRun</code>/<code>ready_count</code>,
+        Lesson 6's <code>both_versions</code>, Lesson 7's <code>resolve_access_label</code>,
+        whatever else is there — should still be present, now rebased on top of your edit.
+        Nothing was lost; you didn't have to redo anything by hand.
+      </p>
+    </li>
+
+    <li>
+      <span class="task-title">Get back to your actual current work</span>
+      <p>
+        Find the change ID that was your tip before you started (still visible near the top of
+        <code>jj log</code>), and:
+      </p>
+      <pre><code>jj edit &lt;tip-change-id&gt;</code></pre>
+      <p>
+        Or, if you'd rather start something fresh from here: <code>jj new</code>.
+      </p>
+    </li>
+  </ol>
+
+  <div class="callout callout--vcs">
+    <span class="callout-label">Why this is safe to experiment with</span>
+    <p>
+      If anything about this feels wrong afterward — descendants look broken, you edited the wrong
+      change — <code>jj undo</code> reverts the last operation, full stop. There's no "detached
+      HEAD" danger here the way there is in git; jj doesn't have an equivalent failure mode for
+      this operation.
+    </p>
+  </div>
+
+  <p><span class="win-badge">Tangible win</span> You changed something in the middle of your history and watched everything after it update automatically — no manual rebase, no lost work.</p>
+
+  <div class="callout callout--domain">
+    <span class="callout-label">Why this matters for the backend</span>
+    <p>
+      Review feedback on a real backend-service change almost never targets your latest commit
+      only — you'll be asked to fix something two changes back while later work already exists on
+      top. This is that exact workflow, practiced now instead of improvised under review pressure.
+    </p>
+  </div>
+
+  <div class="callout callout--source">
+    <span class="callout-label">Primary source</span>
+    <p>
+      <a href="https://jj-vcs.github.io/jj/latest/">The Jujutsu tutorial</a> — see the sections on
+      <code>jj edit</code> and rebasing. See <a href="../reference/0002-rust-tooling-cheatsheet.html"><code>../reference/0002-rust-tooling-cheatsheet.html</code></a>
+      for the quick command table. No Comprehensive Rust or Rustlings equivalent — neither teaches
+      a VCS.
+    </p>
+  </div>
+
+  <div class="callout callout--ask">
+    <span class="callout-label">Ask your tutor</span>
+    <p>
+      If the descendants don't look right after editing, or you're not sure which change ID is
+      which, stop and ask before experimenting further — jj is safe to recover from mistakes in,
+      but it's still worth understanding what happened rather than just moving past confusion.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    <strong>Next up:</strong> back to Rust — <code>Vec</code>, <code>String</code>/<code>&amp;str</code>,
+    and <code>HashMap</code> named properly at last, tied to the kind of
+    <code>HashMap&lt;String, String&gt;</code> and nested-collection shapes already sitting
+    unexplained in a backend service's audit-log and operating-parameter code.
+  </p>
+
+</main>
+
+<footer class="course-footer">
+  <div class="footer-inner">
+    <a href="0007-lifetimes-and-borrowed-data.html">← Lesson 7</a> ·
+    <a href="../MISSION.md">Mission</a> ·
+    <a href="../reference/0002-rust-tooling-cheatsheet.html">Tooling cheatsheet</a> ·
+    <a href="0009-collections-and-strings.html">Lesson 9 →</a>
+  </div>
+</footer>
+
+</body>
+</html>
